@@ -1,0 +1,128 @@
+
+@nodesearch-dialog-background: white;
+@nodesearch-dialog-shadow: 0 0 5px black;
+@nodesearch-dialog-thumbnail-width: 33%;
+@nodesearch-dialog-thumbnail-height: 3em;
+@nodesearch-dialog-thumbnail-border-color: #ccc;
+@nodesearch-dialog-active-border-color: red;
+@nodesearch-dialog-width-small: 320px;
+@nodesearch-dialog-width-normal: 640px;
+@nodesearch-dialog-width-large: 960px;
+@nodesearch-dialog-margin-top: 50px;
+@nodesearch-dialog-z-index: 1000;
+
+.close {
+  position: relative;
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  overflow: hidden;
+  &:hover {
+    &::before, &::after {
+      background: blue;
+    }
+  }
+
+  &::before, &::after {
+    content: '';
+    position: absolute;
+    height: 2px;
+    width: 100%;
+    top: 50%;
+    left: 0;
+    margin-top: -1px;
+    background: #000;
+  }
+  &::before {
+    transform: rotate(45deg);
+  }
+  &::after {
+    transform: rotate(-45deg);
+  }
+  &.thick {
+    &::before, &::after {
+      height: 4px;
+      margin-top: -2px;
+    }
+  }
+  &.rounded {
+    &::before, &::after {
+      border-radius: 5px;
+    }
+  }
+}
+
+.node-search-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: black;
+  opacity: 0.8;
+  z-index: @nodesearch-dialog-z-index;
+}
+
+.node-search-dialog {
+  position: fixed;
+  width: @nodesearch-dialog-width-normal;
+  top: @nodesearch-dialog-margin-top;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: @nodesearch-dialog-z-index + 1;
+  background: @nodesearch-dialog-background;
+  box-shadow: @nodesearch-dialog-shadow;
+  padding: 2rem 3rem;
+  border-radius: 7px;
+}
+
+.node-search-selector {
+
+  > .title {
+    font-size: 1.5em;
+    text-align: center;
+    margin: 0;
+    margin-bottom: 1rem;
+  }
+
+  > .header {
+    input {
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+  }
+
+  > ul.results {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+
+    > li {
+      flex: initial;
+      width: @nodesearch-dialog-thumbnail-width;
+      margin: 0;
+      padding: 1rem;
+
+      > a {
+        min-height: @nodesearch-dialog-thumbnail-height;
+        border: 1px solid @nodesearch-dialog-thumbnail-border-color;
+        padding: .5rem;
+        display: block;
+      }
+
+      &[data-active="true"] {
+        > a {
+          border: 1px solid @nodesearch-dialog-active-border-color;
+        }
+      }
+    }
+  }
+
+  > .footer {
+    [name=submit] {
+      float: right;
+    }
+  }
+}
