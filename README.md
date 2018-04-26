@@ -7,4 +7,3 @@ Now that's being said, it also will provide 2 JavaScript UI components:
 
  * a dialog based selector, all custom, attachable to any input widget,
  * a select2 based autocomplete component.
-

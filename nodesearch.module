@@ -5,6 +5,8 @@
  * Et oui, ce module est moche. Mais il marche.
  */
 
+require_once __DIR__.'/nodesearch.element.inc';
+
 /**
  * Implements hook_menu().
  */
@@ -26,27 +28,138 @@ function nodesearch_menu() {
 }
 
 /**
+ * Implements hook_library().
+ */
+function nodesearch_library() {
+  $libraries = [];
+
+  $embedReact = variable_get('nodesearch_react_enable', true) && !module_exists('react');
+  if (null === ($useDev = variable_get('nodesearch_dev_mode', null))) {
+    $useDev = (0 < variable_get('error_log'));
+  }
+
+  if ($embedReact) {
+    if ($useDev) {
+      $libraries['react'] = [
+        'title' => 'React',
+        'website' => 'https://reactjs.org/',
+        'version' => '16.*',
+        'js' => [
+          'https://unpkg.com/react@16/umd/react.production.min.js' => ['external' => true],
+          'https://unpkg.com/react-dom@16/umd/react-dom.production.min.js' => ['external' => true],
+        ],
+      ];
+    } else{
+      $libraries['react'] = [
+        'title' => 'React',
+        'website' => 'https://reactjs.org/',
+        'version' => '16.*',
+        'js' => [
+          'https://unpkg.com/react@16/umd/react.development.js' => ['external' => true],
+          'https://unpkg.com/react-dom@16/umd/react-dom.development.js' => ['external' => true],
+        ],
+      ];
+    }
+  }
+
+  $path = drupal_get_path('module', 'nodesearch');
+
+  $libraries['nodesearch'] = [
+    'title' => 'Node search',
+    'website' => 'https://github.com/makinacorpus/drupal-nodesearch',
+    'version' => '1',
+    'js' => [
+      $path . '/dist/nodesearch.js' => [],
+    ],
+    'css' => [
+      $path . '/dist/nodesearch.css' => [],
+    ],
+  ];
+
+  if ($embedReact) {
+    $libraries['nodesearch']['dependencies'][] = ['nodesearch', 'react'];
+  }
+
+  return $libraries;
+}
+
+/**
  * Testing handler.
  */
 function nodesearch_page_test_form($form, &$form_state) {
+  // Randomly select default nodes
+  $idList = db_select('node', 'n')
+    ->fields('n', ['nid'])
+    ->addTag('node_access')
+    ->orderRandom()
+    ->range(0, rand(2, 5))
+    ->execute()
+    ->fetchCol()
+  ;
 
-  drupal_add_js(drupal_get_path('module', 'nodesearch').'/dist/nodesearch.js');
-
-  $form['my_node'] = [
-    '#title'            => t("Choose a node"),
-    '#type'             => 'textfield',
-    '#attributes'       => ['data-selector' => "true", 'placeholder' => t("Type here a node identifier")],
-    '#default_value'    => null,
-    '#required'         => true,
-    '#element_validate' => [],
+  $form['my_nodes'] = [
+    '#title'          => t("Choose a node"),
+    '#type'           => 'nodesearch',
+    '#default_value'  => $idList,
+    '#required'       => true,
+    '#multiple'       => true,
+    '#min'            => 0,
+    '#max'            => 12,
   ];
 
   $form['submit'] = [
     '#type'   => 'submit',
+    '#submit' => ['nodesearch_page_test_form_submit'],
     '#value'  => t("Select this node and be happy"),
   ];
 
   return $form;
+}
+
+/**
+ * Testing form submit handler.
+ */
+function nodesearch_page_test_form_submit($form, &$form_state) {
+  $idList = $form_state['values']['my_nodes'];
+  if ($idList) {
+    $text = [];
+    foreach (node_load_multiple($idList) as $node) {
+      $text[] = $node->nid . ' - ' . $node->title;
+    }
+    drupal_set_message(t("Selected values are:<ul><li>!items</li></ul>", ['!items' => implode('</li><li>', $text)]));
+  } else {
+    drupal_set_message(t("You have no selected content."));
+  }
+}
+
+/**
+ * Build result array from node
+ *
+ * @param \stdClass $node
+ *
+ * @return string[]
+ */
+function nodesearch_result($node) : array {
+
+  $types = node_type_get_names();
+
+  if (variable_get('nodesearch_endpoint_add_view', false)) {
+    $output = node_view($node, variable_get('nodesearch_endpoint_view_mode', 'teaser'));
+    $output = drupal_render($output);
+  } else {
+    $output = '';
+  }
+
+  return [
+    'id'          => $node->nid,
+    'title'       => $node->title,
+    'status'      => $node->status,
+    'created'     => (new \DateTimeImmutable('@'.$node->created))->format(\DateTime::ISO8601),
+    'updated'     => (new \DateTimeImmutable('@'.$node->changed))->format(\DateTime::ISO8601),
+    'type'        => $node->type,
+    'human_type'  => $types[$node->type] ?? $node->type,
+    'output'      => $output,
+  ];
 }
 
 /**
@@ -61,7 +174,6 @@ function nodesearch_page_endpoint() {
   $prefixWildcard = (bool)variable_get('nodesearch_endpoint_prefix_wildcard_enable', true);
   $limit          = (int)variable_get('nodesearch_endpoint_limit_default', 24);
   $includeOutput  = variable_get('nodesearch_endpoint_add_view', false);
-  $viewMode       = variable_get('nodesearch_endpoint_view_mode', 'teaser');
   $sortField      = 'updated';
   $sortFieldReal  = null;
   $sortOrder      = 'desc';
@@ -211,31 +323,12 @@ function nodesearch_page_endpoint() {
       $nidList = $query->execute()->fetchCol();
       if ($nidList) {
         foreach (node_load_multiple($nidList) as $node) {
-          $output = node_view($node, $viewMode);
-          $result[] = [
-            'id'          => $node->nid,
-            'title'       => $node->title,
-            'status'      => $node->status,
-            'created'     => (new \DateTimeImmutable('@'.$node->created))->format(\DateTime::ISO8601),
-            'updated'     => (new \DateTimeImmutable('@'.$node->changed))->format(\DateTime::ISO8601),
-            'type'        => $node->type,
-            'human_type'  => $allowedTypes[$node->type] ?? $node->type,
-            'output'      => drupal_render($output),
-          ];
+          $result[] = nodesearch_result($node);
         }
       }
     } else {
-      foreach ($query->execute() as $node) {
-        $result[] = [
-          'id'          => $node->nid,
-          'title'       => $node->title,
-          'status'      => $node->status,
-          'created'     => (new \DateTimeImmutable('@'.$node->created))->format(\DateTime::ISO8601),
-          'updated'     => (new \DateTimeImmutable('@'.$node->changed))->format(\DateTime::ISO8601),
-          'type'        => $node->type,
-          'human_type'  => $allowedTypes[$node->type] ?? $node->type,
-          'output'      => null,
-        ];
+      foreach ($query->execute() as $row) {
+        $result[] = nodesearch_result($row);
       }
     }
   } else {

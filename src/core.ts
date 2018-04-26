@@ -1,6 +1,4 @@
 
-import { renderDialog } from "./dialog";
-
 export interface Search {
     page?: number;
     limit?: number;
@@ -76,41 +74,5 @@ export function doSearch(search: Search): Promise<Result> {
             reject(`${req.status}: ${req.statusText}: ${req.responseText}`);
         });
         req.send();
-    });
-}
-
-export function SelectorDialog(target: HTMLInputElement, title?: string): void {
-
-    // Prepare arguments from data attributes
-    let types: string[] | null = null;
-    if (target.hasAttribute("data-type")) {
-        types = (<string>target.getAttribute("data-type")).split(",").map(value => value.trim());
-    }
-    if (!title) {
-        title = target.getAttribute("data-title") || "";
-    }
-
-    target.addEventListener("click", (event) => {
-        event.stopPropagation();
-        event.preventDefault();
-
-        const dialogElement = target.ownerDocument.createElement('div');
-        target.ownerDocument.body.appendChild(dialogElement);
-
-        renderDialog({
-            title: title || "Select content",
-            // types: types,
-            doRefresh: (search: Search) => {
-                return doSearch(search);
-            },
-            doUpdate: (value?: string) : void => {
-                target.value = value || "";
-            },
-            doClose: () => {
-                if (dialogElement.parentNode) {
-                    dialogElement.parentNode.removeChild(dialogElement);
-                }
-            },
-        }, dialogElement);
     });
 }

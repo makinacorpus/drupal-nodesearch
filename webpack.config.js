@@ -12,7 +12,7 @@ module.exports = {
   //devtool: 'source-map',
   plugins: [
     new CleanWebpackPlugin([distDirectory]),
-    // new MinifyPlugin(),
+    //new MinifyPlugin(),
     extractLess
   ],
   module: {

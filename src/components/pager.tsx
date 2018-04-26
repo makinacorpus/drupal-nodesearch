@@ -81,8 +81,8 @@ export class Pager extends React.Component<PagerProps> {
         }
 
         return (
-            <nav aria-label={this.props.ariaLabel || "Page navigation"}>
-                <ul className={this.props.className || "pagination"}>
+            <nav className={this.props.className || "pager-nav"} aria-label={this.props.ariaLabel || "Page navigation"}>
+                <ul className="pagination">
                     {firstPageLink}
                     {pageLinks}
                     {lastPageLink}
