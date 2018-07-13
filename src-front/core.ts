@@ -5,6 +5,7 @@ export interface Search {
     search?: string;
     sort_field?: string;
     sort_order?: string;
+    types?: string[];
 }
 
 export interface ResultItem {
@@ -15,7 +16,7 @@ export interface ResultItem {
     readonly updated: string
     readonly type: string;
     readonly human_type: string;
-    readonly output: string
+    readonly output: string;
 }
 
 export function createResultItemStub(id: string): ResultItem {
@@ -58,6 +59,9 @@ export function doSearch(search: Search): Promise<Result> {
         }
         if (search.sort_order) {
             parameters.push(encodeComponent('sort_order', search.sort_order));
+        }
+        if (search.types) {
+            parameters.push(encodeComponent('type', search.types.join(',')));
         }
 
         const req = new XMLHttpRequest();

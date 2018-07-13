@@ -12,6 +12,8 @@ function nodesearch_element_info() {
     // the same (an array if multiple, a single value if not).
     'nodesearch' => [
       '#process'            => ['nodesearch_element_process'],
+      // Allowed node types (if empty all content type are allowed)
+      '#bundles'            => [],
       // Will be the selection dialog title.
       '#title'              => null,
       // Will be the search input placeholder.
@@ -25,10 +27,32 @@ function nodesearch_element_info() {
       '#multiple'           => false,
       '#input'              => true,
       '#value_callback'     => 'nodesearch_element_value',
-      //'#element_validate'   => ['nodesearch_element_validate'],
+      '#element_validate'   => ['nodesearch_element_validate'],
       '#attached'           => ['library' => [['nodesearch', 'nodesearch']]],
+      // For internal use only, transparently handle ['nid' => int] values.
+      '#field_api'          => false,
     ],
   ];
+}
+
+function _nodesearch_element_normalize_values($element) {
+  $values = [];
+
+  // Transparently accept ['nid' => int] arrays for field API to be happy.
+  if ($element['#field_api']) {
+    $values = array_map(function ($item) { return $item['nid']; }, $element['#value']);
+  } else if (!empty($element['#value'])) {
+    // Normalize input depending on the widget being multiple or not.
+    if (is_array($element['#value'])) {
+      // We have a problem here, the element do not allow more than one value
+      // take it all anyway, we will reduce later after having load the nodes.
+      $values = $element['#value'];
+    } else {
+      $values = [$element['#value']];
+    }
+  }
+
+  return $values;
 }
 
 /**
@@ -42,6 +66,13 @@ function nodesearch_element_process($element) {
   $min      = (int)$element['#min'];
   $max      = (int)$element['#max'];
   $output   = [];
+
+  // Normalize bundles
+  if (is_array($element['#bundles'])) {
+    $bundles = $element['#bundles'];
+  } else {
+    $bundles = $element['#bundles'] = [$element['#bundles']];
+  }
 
   // Default minimum value normalisation.
   if ($min < 0) {
@@ -76,28 +107,7 @@ function nodesearch_element_process($element) {
   $element['#min'] = $min;
   $element['#max'] = $max;
 
-  // Normalize input depending on the widget being multiple or not.
-  if (!empty($element['#value'])) {
-    if ($element['#multiple']) {
-      if (!is_array($element['#value'])) {
-        trigger_error("nodesearch widget value must be an integer array if element is multiple", E_USER_WARNING);
-        $values = [$element['#value']];
-      } else {
-        $values = $element['#value'];
-      }
-    } else {
-      if (is_array($element['#value'])) {
-        trigger_error("nodesearch widget value must be a single integer if element is not multiple", E_USER_WARNING);
-        // We have a problem here, the element do not allow more than one value
-        // take it all anyway, we will reduce later after having load the nodes.
-        $values = $element['#value'];
-      } else {
-        $values = [$element['#value']];
-      }
-    }
-  }
-
-  if ($values) {
+  if ($values = _nodesearch_element_normalize_values($element)) {
     // Validate input by loading all the nodes. If there are duplicates,
     // ordering will probably be broken using this array_unique() call.
     $values = array_unique($values);
@@ -128,6 +138,7 @@ function nodesearch_element_process($element) {
       'data-default'      => json_encode($output),
       'data-min'          => $min,
       'data-max'          => $max,
+      'data-bundle'       => implode(',', $bundles),
     ],
   ];
 
@@ -138,58 +149,76 @@ function nodesearch_element_process($element) {
  * Element value callback.
  */
 function nodesearch_element_value(&$element, $input = false) {
+  $values = [];
+
   if ($input) {
-    return array_filter(array_unique(explode(',', $input['values'])));
+    $values = array_filter(array_unique(explode(',', $input['values'])));
+  } else if ($element['#default_value']) {
+    if (is_array($element['#default_value'])) {
+      $values = $element['#default_value']; 
+    } else {
+      $values = [$element['#default_value']];
+    }
   }
-  return $element['#default_value'];
+
+  // Handle field API transparently.
+  if ($element['#field_api']) {
+    // This also handles the fact that we may, for some unknown reason, pass
+    // in here more than once, values could end up be ['nid' =>  ['nid => int]]
+    // and we sure don't want that.
+    return array_map(function ($value) { return is_array($value) ? $value : ['nid' => $value]; }, $values);
+  }
+
+  return $values;
 }
 
 /**
- * Implements hook_field_validate().
+ * Element validate callback.
  */
-function nodesearch_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
-  if (!count($items)) {
-    return;
+function nodesearch_element_validate(&$element, $form_state) {
+  $value = _nodesearch_element_normalize_values($element);
+
+  // Ensure bounds.
+  $count = count($value);
+  if ($element['#min'] && $count < $element['#min']) {
+    form_error($element, format_plural(
+      $element['#min'],
+      "%name must contain at least @count node.",
+      "%name must contain at least @count nodes.",
+      ['%name' => $element['#title']]
+    ));
+  }
+  if ($element['#max'] && $count > $element['#max']) {
+    form_error($element, format_plural(
+      $element['#max'],
+      "%name can contain a maximum of @count node.",
+      "%name can contain a maximum of @count nodes.",
+      ['%name' => $element['#title']]
+    ));
   }
 
-  // Collect nodes.
-  $nids = [];
-  foreach ($items as $item) {
-    if (!empty($item['nid'])) {
-      $nids[] = $item['nid'];
+  // Ensure all nodes exist and have the right bundle.
+  if ($value) {
+    $nodes = node_load_multiple($value);
+    if (count($nodes) !== $count) {
+      form_error($element, t("%name contains one or more non existing nodes.", ['%name' => $element['#title']]));
+    }
+
+    if ($element['#bundles']) {
+      if (is_array($element['#bundles'])) {
+        $bundles = $element['#bundles'];
+      } else {
+        $bundles = [$element['#bundles']];
+      }
+
+      foreach ($nodes as $node) {
+        if (!in_array($node->type, $bundles)) {
+          form_error($element, t("%name's %title does not have an allowed node type.", [
+            '%name' => $element['#title'],
+            '%title' => $node->title,
+          ]));
+        }
+      }
     }
   }
-  $nodes = node_load_multiple($nids);
-
-  // Verify node exist.
-  if (count($nodes) != count($nids)) {
-    $errors[$field['field_name']][$langcode][0][] = [
-      'error'   => 'nodesearch_non_existent_nodes',
-      'message' => t('There is content no longer available.'),
-    ];
-  } else {
-    // Verify bundles are correct.
-    foreach ($items as $delta => $item) {
-      if (empty($item['nid']) || !isset($nodes[$item['nid']])) {
-        continue;
-      }
-      $node = $nodes[$item['nid']];
-
-      if (!in_array($node->type, $instance['widget']['settings']['bundles'])) {
-        $errors[$field['field_name']][$langcode][$delta][] = [
-          'error'   => 'nodesearch_wrong_bundle',
-          'message' => t("%name: this node's type is not allowed here.", [
-            '%name' => entity_label('node', $node),
-          ]),
-        ];
-      }
-    }
-  }
-}
-
-/**
- * Implements hook_field_is_empty().
- */
-function nodesearch_field_is_empty($item) {
-  return empty($item['nid']);
 }

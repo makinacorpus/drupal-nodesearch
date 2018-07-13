@@ -8,7 +8,7 @@ const distDirectory = path.resolve(__dirname, 'dist');
 const extractLess = new ExtractTextPlugin({filename: "nodesearch.css"});
 
 module.exports = {
-  entry: ['core-js/modules/es6.promise', './src/index.js'],
+  entry: ['core-js/modules/es6.promise', './src-front/index.js'],
   //devtool: 'source-map',
   plugins: [
     new CleanWebpackPlugin([distDirectory]),

@@ -42,6 +42,11 @@ export interface WidgetProps {
     readonly maxCount?: number;
 
     /**
+     * Allowed item types
+     */
+    readonly types?: string[],
+
+    /**
      * A new value has been selected by the user, if undefined or empty this
      * means the user clicked the "remove" button.
      */
@@ -103,6 +108,9 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
             }
             if (!search.sort_order) {
                 search.sort_order = this.state.result.sort_order;
+            }
+            if (!search.types) {
+                search.types = this.props.types;
             }
         }
 
@@ -269,6 +277,7 @@ export function SelectorWidgetInit(target: HTMLInputElement) {
         placeholder: target.getAttribute("placeholder") || target.getAttribute("data-placeholder") || "",
         minCount: parseInt(target.getAttribute("data-min") || "") || 0,
         maxCount: parseInt(target.getAttribute("data-max") || "") || 1,
+        types: (target.getAttribute("data-bundle") || "").split(",").map(value => value.trim()),
         // Restore values into the hidden widget, that will be really POST'ed.
         onUpdate: (values: ResultItem[]) => target.value = values.map(item => item.id).join(","),
     };

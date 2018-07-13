@@ -506,6 +506,9 @@ function doSearch(search) {
         if (search.sort_order) {
             parameters.push(encodeComponent('sort_order', search.sort_order));
         }
+        if (search.types) {
+            parameters.push(encodeComponent('type', search.types.join(',')));
+        }
         var req = new XMLHttpRequest();
         req.open('GET', '/ajax/node/search?' + parameters.join('&'));
         req.setRequestHeader("Accept", "application/json");
@@ -1410,6 +1413,9 @@ var SelectorWidget = function (_super) {
             if (!search.sort_order) {
                 search.sort_order = this.state.result.sort_order;
             }
+            if (!search.types) {
+                search.types = this.props.types;
+            }
         }
         Core.doSearch(search).then(function (result) {
             return _this.setState({ result: result });
@@ -1518,6 +1524,9 @@ function SelectorWidgetInit(target) {
         placeholder: target.getAttribute("placeholder") || target.getAttribute("data-placeholder") || "",
         minCount: parseInt(target.getAttribute("data-min") || "") || 0,
         maxCount: parseInt(target.getAttribute("data-max") || "") || 1,
+        types: (target.getAttribute("data-bundle") || "").split(",").map(function (value) {
+            return value.trim();
+        }),
         onUpdate: function onUpdate(values) {
             return target.value = values.map(function (item) {
                 return item.id;

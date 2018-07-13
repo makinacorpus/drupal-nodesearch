@@ -6,6 +6,7 @@
  */
 
 require_once __DIR__.'/nodesearch.element.inc';
+require_once __DIR__.'/nodesearch.field.inc';
 
 /**
  * Implements hook_menu().
@@ -103,8 +104,9 @@ function nodesearch_page_test_form($form, &$form_state) {
     '#default_value'  => $idList,
     '#required'       => true,
     '#multiple'       => true,
-    '#min'            => 0,
+    '#min'            => 2,
     '#max'            => 6,
+    '#bundles'        => 'page',
   ];
 
   $form['submit'] = [
@@ -164,6 +166,8 @@ function nodesearch_result($node) : array {
 
 /**
  * Probably the only function of this whole module.
+ *
+ * C'est terriblement moche, mais j'assume assez bien.
  */
 function nodesearch_page_endpoint() {
   global $user;
@@ -189,6 +193,9 @@ function nodesearch_page_endpoint() {
   $query = db_select('node', 'n');
   $query->fields('n', ['nid', 'title', 'status', 'created', 'changed', 'type']);
   $query->addTag('node_access');
+
+  // Allow other modules to compete with us (contextual filtering, etc...).
+  $query->addTag('nodesearch');
 
   if (isset($_GET['limit'])) {
     if (!is_numeric($_GET['limit']) || $_GET['limit'] < 1 || $maxLimit < $_GET['limit']) {
