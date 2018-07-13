@@ -104,7 +104,7 @@ function nodesearch_page_test_form($form, &$form_state) {
     '#required'       => true,
     '#multiple'       => true,
     '#min'            => 0,
-    '#max'            => 12,
+    '#max'            => 6,
   ];
 
   $form['submit'] = [
@@ -172,7 +172,7 @@ function nodesearch_page_endpoint() {
   $maxLimit       = (int)variable_get('nodesearch_endpoint_limit_max', 100);
   $onlyPublished  = (bool)variable_get('nodesearch_endpoint_published_only', true);
   $prefixWildcard = (bool)variable_get('nodesearch_endpoint_prefix_wildcard_enable', true);
-  $limit          = (int)variable_get('nodesearch_endpoint_limit_default', 24);
+  $limit          = (int)variable_get('nodesearch_endpoint_limit_default', 12);
   $includeOutput  = variable_get('nodesearch_endpoint_add_view', false);
   $sortField      = 'updated';
   $sortFieldReal  = null;

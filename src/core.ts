@@ -18,6 +18,19 @@ export interface ResultItem {
     readonly output: string
 }
 
+export function createResultItemStub(id: string): ResultItem {
+    return {
+        id: id,
+        title: id,
+        status: 0,
+        created: "",
+        updated: "",
+        type: "",
+        human_type: "",
+        output: "",
+    };
+}
+
 export interface Result extends Search {
     total: number;
     result: ResultItem[];

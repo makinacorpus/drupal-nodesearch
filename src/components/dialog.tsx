@@ -19,17 +19,6 @@ export interface DialogProps {
 };
 
 export class Dialog extends React.Component<DialogProps> {
-
-    constructor(props: DialogProps) {
-        super(props);
-
-        this.onCloseClick = this.onCloseClick.bind(this);
-    }
-
-    private onCloseClick() {
-        this.props.doClose();
-    }
-
     render() {
         return (
             <div className="node-selector-dialog">
@@ -38,13 +27,12 @@ export class Dialog extends React.Component<DialogProps> {
                     <div className="inner">
                         <h1 className="title">
                             {this.props.title}
-                            <button name="close" onClick={this.onCloseClick} className="close">
+                            <button name="close" onClick={this.props.doClose}>
+                                &times;
                                 <span className="sr-only">{this.props.closeLabel || "Close"}</span>
                             </button>
                         </h1>
-                        <div className="content">
-                            {this.props.children}
-                        </div>
+                        <div className="content">{this.props.children}</div>
                     </div>
                 </div>
             </div>

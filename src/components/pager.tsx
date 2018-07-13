@@ -5,6 +5,7 @@ export interface PagerProps {
     readonly page: number;
     readonly limit: number;
     readonly total: number;
+    readonly linkCount?: number;
     readonly onClick: (page: number) => void;
     readonly autoHide?: boolean;
     readonly ariaLabel?: string;
@@ -14,17 +15,6 @@ export interface PagerProps {
 }
 
 export class Pager extends React.Component<PagerProps> {
-
-    constructor(props: PagerProps) {
-        super(props);
-
-        this.onPageLinkClick = this.onPageLinkClick.bind(this);
-    }
-
-    private onPageLinkClick(page: number): void {
-        this.props.onClick(page);
-    }
-
     render() {
         // Auto-hide if there is only one page
         if (this.props.autoHide && this.props.total <= this.props.limit) {
@@ -34,11 +24,17 @@ export class Pager extends React.Component<PagerProps> {
         // Build page links if revelant
         const pageLinks = [];
         const pageCount = Math.ceil(this.props.total / this.props.limit);
-        for (let i = 1; i <= pageCount; ++i) {
+
+        const count = this.props.linkCount || 5;
+        const median = Math.floor(count / 2);
+        const start = Math.max(1, this.props.page - median);
+        const end = Math.min(start + count, pageCount);
+
+        for (let i = start; i <= end; i++) {
             if (this.props.page === i) {
-                pageLinks.push(<li key={i} className="active"><a onClick={() => {this.onPageLinkClick(i)}} href="#">{i}</a></li>);
+                pageLinks.push(<li key={i} className="active"><a onClick={() => {this.props.onClick(i)}} href="#">{i}</a></li>);
             } else {
-                pageLinks.push(<li key={i}><a onClick={() => {this.onPageLinkClick(i)}} href="#">{i}</a></li>);
+                pageLinks.push(<li key={i}><a onClick={() => {this.props.onClick(i)}} href="#">{i}</a></li>);
             }
         }
 
@@ -47,7 +43,7 @@ export class Pager extends React.Component<PagerProps> {
             if (this.props.page === 1) {
                 firstPageLink = (
                     <li className="disabled">
-                        <a href="#" aria-label={this.props.previousLabel || "Previous"}>
+                        <a key="first" href="#" aria-label={this.props.previousLabel || "Previous"}>
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -55,7 +51,7 @@ export class Pager extends React.Component<PagerProps> {
             } else {
                 firstPageLink = (
                     <li>
-                        <a href="#" aria-label={this.props.previousLabel || "Previous"}>
+                        <a key="first" onClick={() => {this.props.onClick(1)}} href="#" aria-label={this.props.previousLabel || "Previous"}>
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -64,7 +60,7 @@ export class Pager extends React.Component<PagerProps> {
             if (this.props.page === pageCount) {
                 lastPageLink = (
                     <li>
-                        <a href="#" aria-label={this.props.nextLabel || "Next"}>
+                        <a key="first" onClick={() => {this.props.onClick(pageCount)}} href="#" aria-label={this.props.nextLabel || "Next"}>
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>

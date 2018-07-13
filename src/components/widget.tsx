@@ -1,36 +1,11 @@
 
+import * as Core from "../core";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { Dialog } from "./dialog";
-import { doSearch, Result, ResultItem, Search } from "../core";
 import { Pager } from "./pager";
-import * as Dragula from 'react-dragula'
-
-/**
- * Single result preview properties
- */
-interface ResultPreviewProps {
-    readonly data: ResultItem;
-}
-
-/**
- * Single result preview component
- */
-class ResultPreview extends React.Component<ResultPreviewProps> {
-    render() {
-        return (
-            <div className="node-selector-item">
-                <span className="title">{this.props.data.title}</span>
-            </div>
-        );
-    }
-}
-
-/**
- * Represent an initial value for the widget: can be a string (node identifier)
- * or an object (ResultItem instance).
- */
-type StringOrResultItem = string | ResultItem;
+import { Result, ResultItem, Search } from "../core";
+import { ResultPreviewList } from "./preview";
 
 /**
  * Widget properties
@@ -39,7 +14,7 @@ export interface WidgetProps {
     /**
      * Default values
      */
-    readonly values: StringOrResultItem[];
+    readonly values: (string | ResultItem)[];
 
     /**
      * Widget title
@@ -70,7 +45,7 @@ export interface WidgetProps {
      * A new value has been selected by the user, if undefined or empty this
      * means the user clicked the "remove" button.
      */
-    readonly onUpdate?: (values: ResultItem[]) => void;
+    readonly onUpdate: (values: ResultItem[]) => void;
 };
 
 /**
@@ -87,23 +62,12 @@ interface WidgetState {
  */
 export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 
-    private readonly sortableContainer: React.RefObject<HTMLUListElement>;
-
     constructor(props: WidgetProps) {
         super(props);
 
-        const values = this.props.values.map((item: StringOrResultItem): ResultItem => {
+        const values = this.props.values.map((item): ResultItem => {
             if ("string" === typeof item) {
-                return {
-                    id: item,
-                    title: item,
-                    status: 0,
-                    created: "",
-                    updated: "",
-                    type: "",
-                    human_type: "",
-                    output: "",
-                };
+                return Core.createResultItemStub(item);
             }
             return item;
         });
@@ -111,56 +75,22 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
         this.state = {values};
 
         this.onCloseClick = this.onCloseClick.bind(this);
-        this.onDialogOpenClick = this.onDialogOpenClick.bind(this);
-        this.onPageChange = this.onPageChange.bind(this);
-        this.onRemoveClick = this.onRemoveClick.bind(this);
+        this.onOpenClick = this.onOpenClick.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
-        this.onSubmitClick = this.onSubmitClick.bind(this);
-
-        this.sortableContainer = React.createRef();
+        this.valueAdd = this.valueAdd.bind(this);
+        this.valueRemove = this.valueRemove.bind(this);
     }
 
     componentDidMount() {
         this.refresh();
-
-        // Initialise the sortable behavior on main display.
-        /* const handler = */ Dragula([this.sortableContainer.current], {
-            isContainer: function (el: any) {
-                return false;
-              },
-              moves: function (el: any, source: any, handle: any, sibling: any) {
-                return true;
-              },
-              accepts: function (el: any, target: any, source: any, sibling: any) {
-                return true;
-              },
-              invalid: function (el: any, handle: any) {
-                return false;
-              },
-              direction: 'horizontal',
-              copy: false,
-              copySortSource: false,
-              revertOnSpill: false,
-              removeOnSpill: false,
-              mirrorContainer: document.body,
-              ignoreInputTextSelection: true,
-        });
-        // Re-order items in our values on drop
-        /*
-        handler.on("dragend", () => {
-            const values = this.state.values.concat([]);
-
-        });
-         */
     }
 
-    refresh(search?: Search) {
-
+    private refresh(search?: Search) {
         if (!search) {
             search = {};
         }
 
-        // Populate search from state
+        // Do not loose the current filters, only override.
         if (this.state.result) {
             if (!search.page) {
                 search.page = this.state.result.page;
@@ -176,50 +106,30 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
             }
         }
 
-        doSearch(search)
-            .then((result) => {
-                this.setState((prevState) => {
-                    return {
-                        result: result,
-                        values: prevState.values,
-                    };
-                });
-            })
-            .catch((error) => {
-                console.log(error);
-            })
+        Core.doSearch(search)
+            .then((result) => this.setState({result: result}))
+            .catch((error) => console.log(error))
         ;
     }
 
-    private changeValues(values: ResultItem[]) {
-        if (this.props.onUpdate) {
-            this.props.onUpdate(values);
+    private valueAdd(value: ResultItem) {
+        let values;
+        if (this.props.maxCount === 1) {
+            values = [value];
+        } else if (this.props.maxCount && this.state.values.length >= this.props.maxCount) {
+            // Do nothing, sorry.
+            values = this.state.values;
+        } else {
+            values = this.state.values.concat([value]);
         }
-        this.setState((prevState) => {
-            return {
-                result: prevState.result,
-                values: values,
-            };
-        });
+        this.props.onUpdate(values);
+        this.setState({values: values});
     }
 
-    private removeValue(value: ResultItem) {
-        // Magic concat() based array clone
-        const values = this.state.values.concat([]);
-        for (let i = 0; i < values.length; i++) {
-            if (values[i].id === value.id) {
-                values.splice(i, 1);
-                break;
-            }
-        }
-        this.changeValues(values);
-    }
-
-    private addValue(value: ResultItem) {
-        // Magic concat() based array clone
-        const values = this.state.values.concat([]);
-        values.push(value);
-        this.changeValues(values);
+    private valueRemove(value: ResultItem) {
+        const values = this.state.values.filter(item => value.id !== item.id);
+        this.props.onUpdate(values);
+        this.setState({values: values});
     }
 
     private onChangeDebounceTimer: any;
@@ -227,109 +137,64 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
     private onSearchChange(event: React.ChangeEvent<HTMLInputElement>) {
         // Very primitive implementation of debounce, see
         // https://gist.github.com/ca0v/73a31f57b397606c9813472f7493a940
-        const value = event.target.value;
-        (() => {
+        ((value: string) => {
             clearTimeout(this.onChangeDebounceTimer);
-            this.onChangeDebounceTimer = setTimeout(() => this.refresh({search: value}), 200);
-        })();
-    }
-
-    private onRemoveClick() {
-        if (this.props.onUpdate) {
-            this.props.onUpdate([]);
-        }
-        this.onCloseClick();
-    }
-
-    private onSubmitClick() {
-        if (this.props.onUpdate) {
-            this.props.onUpdate(this.state.values);
-        }
-        this.onCloseClick();
+            this.onChangeDebounceTimer = setTimeout(() => this.refresh({page:1, search: value}), 200);
+        })(event.target.value);
     }
 
     private onCloseClick() {
-        this.setState((prevState) => {
-            return {
-                dialogOpened: false,
-                result: prevState.result,
-                values: prevState.values,
-            };
-        });
+        this.props.onUpdate(this.state.values);
+        this.setState({dialogOpened: false});
     }
 
-    private onDialogOpenClick(event: React.MouseEvent<HTMLAnchorElement>) {
+    private onOpenClick(event: React.MouseEvent<HTMLButtonElement>) {
         event.preventDefault();
-
-        this.setState((prevState) => {
-            return {
-                dialogOpened: true,
-                result: prevState.result,
-                values: prevState.values,
-            };
-        });
-    }
-
-    private onPageChange(page: number) {
-        this.refresh({page: page});
-    }
-
-    private isItemInValues(item: ResultItem): boolean {
-        for (let candidate of this.state.values) {
-            if (candidate.id === item.id) {
-                return true;
-            }
-        }
-        return false;
+        this.setState({dialogOpened: true});
+        this.refresh();
     }
 
     render() {
-        let dialogDisplay = null;
+        let dialog = null;
+        const active = this.state.values.map((item) => item.id);
+        const result = this.state.result ? this.state.result.result : [];
 
         if (this.state.dialogOpened) {
             const searchValue = this.state.result ? this.state.result.search : "";
-            const result = [];
-
-            // Build result list from state
-            if (this.state.result) {
-                result.push(this.state.result.result.map((item) => (
-                    <li key={item.id}>
-                        <a onClick={() => {this.addValue(item)}} data-active={this.isItemInValues(item)}>
-                            <ResultPreview data={item}/>
-                        </a>
-                    </li>
-                )));
-            }
 
             let pager;
             if (this.state.result) {
-                pager = <Pager onClick={this.onPageChange} autoHide={false} page={this.state.result.page || 1} total={this.state.result.total || 0} limit={this.state.result.limit || 1}/>
+                pager = <Pager onClick={(page) => this.refresh({page: page})} autoHide={false} page={this.state.result.page || 1} total={this.state.result.total || 0} limit={this.state.result.limit || 1}/>
             } else {
                 pager = <Pager onClick={() => {}} autoHide={false} page={1} total={0} limit={1}/>
             }
 
-            dialogDisplay = (
-                <Dialog title={this.props.title || "Select content"} doClose={this.onCloseClick}>
-                    <input type="text" name="search" onChange={this.onSearchChange} placeholder={this.props.placeholder} value={searchValue}/>
-                    <ul className="results">{result}</ul>
+            dialog = (
+                <Dialog title={this.props.title || "Search content"} doClose={this.onCloseClick}>
+                    <input
+                        name="search"
+                        onChange={this.onSearchChange}
+                        placeholder={this.props.placeholder || "Type here some text to search content..."}
+                        type="text"
+                        value={searchValue}
+                    />
+                    <ResultPreviewList
+                        active={active}
+                        data={result}
+                        onItemClick={this.valueAdd}
+                    />
                     {pager}
                     <div className="current">
                         <h2>Current selection</h2>
-                        <ul className="results selection">
-                            {this.state.values.map((item) => (
-                                <li key={item.id}>
-                                    <a onClick={() => this.removeValue(item)}>
-                                        <ResultPreview data={item}/>
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
+                        <ResultPreviewList
+                            active={active}
+                            data={this.state.values}
+                            onItemClick={this.valueRemove}
+                            sortable
+                        />
                     </div>
                     <div className="footer">
-                        <button className="btn btn-danger" name="remove" disabled={!this.state.values.length} onClick={this.onRemoveClick}>
-                            Remove
-                        </button>
-                        <button className="btn btn-success" name="submit" disabled={!this.state.values.length} onClick={this.onSubmitClick}>
+                        <button className="btn btn-success" name="submit" onClick={this.onCloseClick}>
                             Select
                         </button>
                     </div>
@@ -339,17 +204,16 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 
         return (
             <div className="node-selector">
-                <div className="current">
-                    <ul className="results selection" ref={this.sortableContainer}>
-                        {this.state.values.map((item) => (
-                            <li key={item.id}>
-                                <ResultPreview data={item}/>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <a href="#" className="btn btn-default" onClick={this.onDialogOpenClick}>{this.props.buttonTitle || "Select"}</a>
-                {dialogDisplay}
+                <ResultPreviewList
+                    active={active}
+                    data={this.state.values}
+                    onItemSort={() => {}}
+                    sortable
+                />
+                <button className="btn btn-default" onClick={this.onOpenClick}>
+                    {this.props.buttonTitle || "Select"}
+                </button>
+                {dialog}
             </div>
         );
     }
@@ -368,7 +232,7 @@ export function SelectorWidgetInit(target: HTMLInputElement) {
     // }
 
     // Find a default value
-    const defaults: StringOrResultItem[] = [];
+    const defaults: (string | ResultItem)[] = [];
     const stringValue = target.value.trim();
 
     // I am not proud of this one, but I needed a way to plug it in to raw HTML
@@ -418,4 +282,3 @@ export function SelectorWidgetInit(target: HTMLInputElement) {
 
     ReactDOM.render(<SelectorWidget{...props}/>, element);
 }
-

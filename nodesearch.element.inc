@@ -68,6 +68,8 @@ function nodesearch_element_process($element) {
     $multiple = false;
   }
 
+  // Required for value processing
+  $element['#tree'] = true;
   // Reset item internals
   $element['#multiple'] = $multiple;
   $element['#required'] = $required;
@@ -142,7 +144,6 @@ function nodesearch_element_value(&$element, $input = false) {
   return $element['#default_value'];
 }
 
-
 /**
  * Implements hook_field_validate().
  */
@@ -166,8 +167,7 @@ function nodesearch_field_validate($entity_type, $entity, $field, $instance, $la
       'error'   => 'nodesearch_non_existent_nodes',
       'message' => t('There is content no longer available.'),
     ];
-  }
-  else {
+  } else {
     // Verify bundles are correct.
     foreach ($items as $delta => $item) {
       if (empty($item['nid']) || !isset($nodes[$item['nid']])) {
@@ -177,16 +177,15 @@ function nodesearch_field_validate($entity_type, $entity, $field, $instance, $la
 
       if (!in_array($node->type, $instance['widget']['settings']['bundles'])) {
         $errors[$field['field_name']][$langcode][$delta][] = [
-            'error'   => 'nodesearch_wrong_bundle',
-            'message' => t("%name: this node's type is not allowed here.", [
-                '%name' => entity_label('node', $node),
-            ]),
+          'error'   => 'nodesearch_wrong_bundle',
+          'message' => t("%name: this node's type is not allowed here.", [
+            '%name' => entity_label('node', $node),
+          ]),
         ];
       }
     }
   }
 }
-
 
 /**
  * Implements hook_field_is_empty().

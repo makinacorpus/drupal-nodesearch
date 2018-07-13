@@ -7,49 +7,19 @@
 @nodesearch-dialog-active-border-color: red;
 @nodesearch-dialog-width-small: 320px;
 @nodesearch-dialog-width-normal: 640px;
-@nodesearch-dialog-width-large: 960px;
+@nodesearch-dialog-width-large: 830px;
 @nodesearch-dialog-margin-top: 50px;
-@nodesearch-dialog-z-index: 1000;
+@nodesearch-dialog-z-index: 2000;
 
-.close {
-  position: relative;
-  display: inline-block;
-  width: 2rem;
-  height: 2rem;
-  overflow: hidden;
-  &:hover {
-    &::before, &::after {
-      background: blue;
-    }
-  }
+@nodesearch-item-margin: 5px;
 
-  &::before, &::after {
-    content: '';
-    position: absolute;
-    height: 2px;
-    width: 100%;
-    top: 50%;
-    left: 0;
-    margin-top: -1px;
-    background: #000;
-  }
-  &::before {
-    transform: rotate(45deg);
-  }
-  &::after {
-    transform: rotate(-45deg);
-  }
-  &.thick {
-    &::before, &::after {
-      height: 4px;
-      margin-top: -2px;
-    }
-  }
-  &.rounded {
-    &::before, &::after {
-      border-radius: 5px;
-    }
-  }
+.resize-to-screen {
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  transform: none;
+  min-height: 100vh;
 }
 
 .node-selector-dialog {
@@ -65,6 +35,7 @@
     z-index: @nodesearch-dialog-z-index;
   }
 
+  // @todo find a way to position absolute from viewport instead
   .dialog {
     position: fixed;
     width: @nodesearch-dialog-width-large;
@@ -77,11 +48,24 @@
     padding: 2rem 3rem;
     border-radius: 7px;
 
+    @media (max-height: 760px) {
+      .resize-to-screen();
+    }
+    @media (max-width: @nodesearch-dialog-width-large) {
+      .resize-to-screen();
+    }
+
     h1 {
       font-size: 1.5em;
       text-align: center;
       margin: 0;
       margin-bottom: 1rem;
+
+      button {
+        float: right;
+        border: none;
+        background: transparent;
+      }
     }
 
     h2 {
@@ -99,39 +83,42 @@
 
 .node-selector {
 
+  > * {
+    margin-bottom: 1rem !important;
+  }
+
   input[type=text] {
     width: 100%;
     margin-bottom: 1rem;
   }
 
-  ul.results {
+  .results {
     list-style: none;
     display: flex;
     flex-wrap: wrap;
     margin: 0;
     padding: 0;
 
-    > li {
+    &:not(.sortable) {
+      margin: -@nodesearch-item-margin;
+    }
+
+    > div {
       flex: initial;
       margin: 0;
       padding: 1rem;
-
-      > a {
-        display: block;
-      }
-
-      &[data-active="true"] {
-        > a {
-          border: 1px solid @nodesearch-dialog-active-border-color;
-        }
-      }
     }
   }
 
   .current {
     margin-bottom: 1rem;
   }
-  .selection {
+
+  .sortable {
+    > * {
+      pointer: grab
+    }
+
     border: 2px dashed #018fe2;
     background: rgba(1, 143, 226, .2);
     padding: .5em;
@@ -146,13 +133,14 @@
     height: 120px;
     border: 1px solid #333;
     background: #ccc;
-
-    margin: 5px;
+    display: block;
+    margin: @nodesearch-item-margin;
     overflow: hidden;
     position: relative;
     padding-left: 0;
     padding-right: 0;
     border-radius: 6px;
+    cursor: pointer;
 
     .title {
       font-size: 12px;
@@ -172,14 +160,12 @@
       width: 100%;
       height: 100%;
     }
-  }
 
-  .selection .node-selector-item,
-  [data-active=true] .node-selector-item {
-    //border: 2px dashed orange;
-    box-shadow: 4px 4px 9px #888;
-    .title {
-      opacity: 1;
+    &[data-active="true"] {
+      box-shadow: 4px 4px 9px #888;
+      .title {
+        opacity: 1;
+      }
     }
   }
 
