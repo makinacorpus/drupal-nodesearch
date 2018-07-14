@@ -101,6 +101,7 @@ function nodesearch_element_process($element) {
 
   // Required for value processing
   $element['#tree'] = true;
+  $element['#theme_wrappers'] = ['form_element'];
   // Reset item internals
   $element['#multiple'] = $multiple;
   $element['#required'] = $required;
