@@ -139,16 +139,8 @@ function nodesearch_page_test_form_submit($form, &$form_state) {
  *
  * @return string[]
  */
-function nodesearch_result($node, bool $withOutput = false, bool $withImage = false) : array {
-
+function nodesearch_result($node, bool $withImage = false) : array {
   $types = node_type_get_names();
-
-  if ($withOutput) {
-    $output = node_view($node, variable_get('nodesearch_endpoint_view_mode', 'teaser'));
-    $output = drupal_render($output);
-  } else {
-    $output = '';
-  }
 
   return [
     'id'          => $node->nid,
@@ -158,7 +150,6 @@ function nodesearch_result($node, bool $withOutput = false, bool $withImage = fa
     'updated'     => (new \DateTimeImmutable('@'.$node->changed))->format(\DateTime::ISO8601),
     'type'        => $node->type,
     'human_type'  => $types[$node->type] ?? $node->type,
-    'output'      => $output,
     'image'       => $withImage ? nodesearch_find_image($node) : '',
   ];
 }
@@ -263,7 +254,6 @@ function nodesearch_page_endpoint() {
   $onlyPublished  = (bool)variable_get('nodesearch_endpoint_published_only', true);
   $prefixWildcard = (bool)variable_get('nodesearch_endpoint_prefix_wildcard_enable', true);
   $limit          = (int)variable_get('nodesearch_endpoint_limit_default', 12);
-  $includeOutput  = variable_get('nodesearch_endpoint_add_view', false);
   $includeImage   = variable_get('nodesearch_endpoint_add_image', true);
   $sortField      = 'updated';
   $sortFieldReal  = null;
@@ -413,11 +403,11 @@ function nodesearch_page_endpoint() {
     $query->range(($page - 1) * $limit, $limit);
 
     // That should do it.
-    if ($includeOutput || $includeImage) {
+    if ($includeImage) {
       $nidList = $query->execute()->fetchCol();
       if ($nidList) {
         foreach (node_load_multiple($nidList) as $node) {
-          $result[] = nodesearch_result($node, $includeOutput, $includeImage);
+          $result[] = nodesearch_result($node, $includeImage);
         }
       }
     } else {

@@ -16,7 +16,6 @@ export interface ResultItem {
     readonly updated: string;
     readonly type: string;
     readonly human_type: string;
-    readonly output: string;
     readonly image: string;
 }
 
@@ -29,7 +28,6 @@ export function createResultItemStub(id: string): ResultItem {
         updated: "",
         type: "",
         human_type: "",
-        output: "",
         image: "",
     };
 }
