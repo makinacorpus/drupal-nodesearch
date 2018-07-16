@@ -26,7 +26,7 @@
   background: white;
   box-shadow: 0 0 5px black;
   padding: 2rem 3rem;
-  border-radius: 7px;
+  border-radius: 5px;
 }
 @media (max-height: 760px) {
   .node-selector-dialog .dialog {
@@ -108,15 +108,14 @@
   visibility: visible !important;
   width: 120px;
   height: 120px;
-  border: 1px solid #333;
-  background: #ccc;
   display: block;
   margin: 5px;
   overflow: hidden;
   position: relative;
   padding-left: 0;
   padding-right: 0;
-  border-radius: 6px;
+  border: 1px solid #333;
+  background: #ccc;
   cursor: pointer;
 }
 .node-selector .node-selector-item .title {
@@ -147,6 +146,23 @@
 }
 .node-selector .node-selector-item[data-active="true"] .title {
   opacity: 1;
+}
+.node-selector .node-selector-placeholder {
+  visibility: visible !important;
+  width: 120px;
+  height: 120px;
+  display: block;
+  margin: 5px;
+  overflow: hidden;
+  position: relative;
+  padding-left: 0;
+  padding-right: 0;
+}
+@media (max-width: 830px) {
+  .node-selector .node-selector-placeholder {
+    display: none;
+    visibility: hidden;
+  }
 }
 .node-selector .gu-transit .node-selector-item {
   border: 1px dashed black;

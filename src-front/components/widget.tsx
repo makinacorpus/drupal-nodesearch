@@ -7,6 +7,8 @@ import { Pager } from "./pager";
 import { Result, ResultItem, Search } from "../core";
 import { ResultPreviewList } from "./preview";
 
+const WIDGET_DEFAULT_LIMIT = 18;
+
 /**
  * Widget properties
  */
@@ -51,6 +53,11 @@ export interface WidgetProps {
      * means the user clicked the "remove" button.
      */
     readonly onUpdate: (values: ResultItem[]) => void;
+
+    /**
+     * Number of results to display per page
+     */
+    readonly limit?: number;
 };
 
 /**
@@ -97,6 +104,9 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 
         // Do not loose the current filters, only override.
         if (this.state.result) {
+            if (!search.limit) {
+                search.limit = this.props.limit || WIDGET_DEFAULT_LIMIT;
+            }
             if (!search.page) {
                 search.page = this.state.result.page;
             }
@@ -190,6 +200,7 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
                         active={active}
                         data={result}
                         onItemClick={this.valueAdd}
+                        maxItemCount={this.props.limit || WIDGET_DEFAULT_LIMIT}
                     />
                     {pager}
                     <div className="current">
@@ -198,6 +209,7 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
                             active={active}
                             data={this.state.values}
                             onItemClick={this.valueRemove}
+                            maxItemCount={this.props.maxCount}
                             sortable
                         />
                     </div>

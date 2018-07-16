@@ -481,7 +481,6 @@ function createResultItemStub(id) {
         updated: "",
         type: "",
         human_type: "",
-        output: "",
         image: ""
     };
 }
@@ -1373,6 +1372,7 @@ var ReactDOM = __webpack_require__(52);
 var dialog_1 = __webpack_require__(53);
 var pager_1 = __webpack_require__(54);
 var preview_1 = __webpack_require__(55);
+var WIDGET_DEFAULT_LIMIT = 18;
 ;
 ;
 var SelectorWidget = function (_super) {
@@ -1402,6 +1402,9 @@ var SelectorWidget = function (_super) {
             search = {};
         }
         if (this.state.result) {
+            if (!search.limit) {
+                search.limit = this.props.limit || WIDGET_DEFAULT_LIMIT;
+            }
             if (!search.page) {
                 search.page = this.state.result.page;
             }
@@ -1478,7 +1481,7 @@ var SelectorWidget = function (_super) {
             } else {
                 pager = React.createElement(pager_1.Pager, { onClick: function onClick() {}, autoHide: false, page: 1, total: 0, limit: 1 });
             }
-            dialog = React.createElement(dialog_1.Dialog, { title: this.props.title || "Search content", doClose: this.onCloseClick }, React.createElement("input", { name: "search", onChange: this.onSearchChange, placeholder: this.props.placeholder || "Type here some text to search content...", type: "text", value: searchValue }), React.createElement(preview_1.ResultPreviewList, { active: active, data: result, onItemClick: this.valueAdd }), pager, React.createElement("div", { className: "current" }, React.createElement("h2", null, "Current selection"), React.createElement(preview_1.ResultPreviewList, { active: active, data: this.state.values, onItemClick: this.valueRemove, sortable: true })), React.createElement("div", { className: "footer" }, React.createElement("button", { className: "btn btn-success", name: "submit", onClick: this.onCloseClick }, "Select")));
+            dialog = React.createElement(dialog_1.Dialog, { title: this.props.title || "Search content", doClose: this.onCloseClick }, React.createElement("input", { name: "search", onChange: this.onSearchChange, placeholder: this.props.placeholder || "Type here some text to search content...", type: "text", value: searchValue }), React.createElement(preview_1.ResultPreviewList, { active: active, data: result, onItemClick: this.valueAdd, maxItemCount: this.props.limit || WIDGET_DEFAULT_LIMIT }), pager, React.createElement("div", { className: "current" }, React.createElement("h2", null, "Current selection"), React.createElement(preview_1.ResultPreviewList, { active: active, data: this.state.values, onItemClick: this.valueRemove, maxItemCount: this.props.maxCount, sortable: true })), React.createElement("div", { className: "footer" }, React.createElement("button", { className: "btn btn-success", name: "submit", onClick: this.onCloseClick }, "Select")));
         }
         return React.createElement("div", { className: "node-selector" }, React.createElement(preview_1.ResultPreviewList, { active: active, data: this.state.values, onItemSort: function onItemSort() {}, sortable: true }), React.createElement("button", { className: "btn btn-default", onClick: this.onOpenClick }, this.props.buttonTitle || "Select"), dialog);
     };
@@ -1693,6 +1696,17 @@ var __extends = undefined && undefined.__extends || function () {
 }();
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = __webpack_require__(8);
+var ResultPreviewPlaceholder = function (_super) {
+    __extends(ResultPreviewPlaceholder, _super);
+    function ResultPreviewPlaceholder() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    ResultPreviewPlaceholder.prototype.render = function () {
+        return React.createElement("div", { className: "node-selector-placeholder" });
+    };
+    return ResultPreviewPlaceholder;
+}(React.Component);
+exports.ResultPreviewPlaceholder = ResultPreviewPlaceholder;
 var ResultPreview = function (_super) {
     __extends(ResultPreview, _super);
     function ResultPreview(props) {
@@ -1737,10 +1751,18 @@ var ResultPreviewList = function (_super) {
     ResultPreviewList.prototype.render = function () {
         var _this = this;
         var classNameSuffix = this.props.sortable ? " sortable" : "";
+        var placeholders = [];
+        if (this.props.maxItemCount) {
+            for (var i = this.props.data.length; i < this.props.maxItemCount; ++i) {
+                placeholders.push("placeholder-" + i);
+            }
+        }
         return React.createElement("div", { ref: this.sortable, className: "results" + classNameSuffix }, this.props.data.map(function (item) {
             return React.createElement(ResultPreview, { key: item.id, item: item, active: -1 !== _this.props.active.indexOf(item.id), onClick: function onClick() {
                     return _this.onItemClick(item);
                 } });
+        }), placeholders.map(function (key) {
+            return React.createElement(ResultPreviewPlaceholder, { key: key });
         }));
     };
     return ResultPreviewList;

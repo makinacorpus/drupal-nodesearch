@@ -46,7 +46,7 @@
     background: @nodesearch-dialog-background;
     box-shadow: @nodesearch-dialog-shadow;
     padding: 2rem 3rem;
-    border-radius: 7px;
+    border-radius: 5px;
 
     @media (max-height: 760px) {
       .resize-to-screen();
@@ -127,19 +127,22 @@
     transition: all .5s ease;
   }
 
-  .node-selector-item {
+  .node-selector-item-base() {
     visibility: visible !important;
     width: 120px;
     height: 120px;
-    border: 1px solid #333;
-    background: #ccc;
     display: block;
     margin: @nodesearch-item-margin;
     overflow: hidden;
     position: relative;
     padding-left: 0;
     padding-right: 0;
-    border-radius: 6px;
+  }
+
+  .node-selector-item {
+    .node-selector-item-base();
+    border: 1px solid #333;
+    background: #ccc;
     cursor: pointer;
 
     .title {
@@ -172,6 +175,16 @@
       .title {
         opacity: 1;
       }
+    }
+  }
+
+  .node-selector-placeholder {
+    .node-selector-item-base();
+
+    // Hide placeholder when switching to full-screen dialog.
+    @media (max-width: @nodesearch-dialog-width-large) {
+      display: none;
+      visibility: hidden;
     }
   }
 

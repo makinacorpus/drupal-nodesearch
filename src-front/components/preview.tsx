@@ -4,6 +4,15 @@ import * as React from "react";
 import { ResultItem } from "../core";
 
 /**
+ * Single result preview placeholder component
+ */
+export class ResultPreviewPlaceholder extends React.Component {
+    render() {
+        return (<div className="node-selector-placeholder"></div>);
+    }
+}
+
+/**
  * Single result preview properties
  */
 export interface ResultPreviewProps {
@@ -64,6 +73,7 @@ export interface ResultPreviewListProps {
     readonly onItemClick?: (item: ResultItem) => void;
     readonly onItemSort?: (item: ResultItem[]) => void;
     readonly sortable?: boolean;
+    readonly maxItemCount?: number;
 }
 
 /**
@@ -120,6 +130,12 @@ export class ResultPreviewList extends React.Component<ResultPreviewListProps> {
 
     render() {
         const classNameSuffix = this.props.sortable ? " sortable" : "";
+        const placeholders = [];
+        if (this.props.maxItemCount) {
+            for (let i = this.props.data.length; i < this.props.maxItemCount; ++i) {
+                placeholders.push("placeholder-" + i);
+            }
+        }
 
         return (
             <div ref={this.sortable} className={"results" + classNameSuffix}>
@@ -129,6 +145,7 @@ export class ResultPreviewList extends React.Component<ResultPreviewListProps> {
                     active={-1 !== this.props.active.indexOf(item.id)}
                     onClick={() => this.onItemClick(item)}
                 />)}
+                {placeholders.map((key) => <ResultPreviewPlaceholder key={key}/>)}
             </div>
         );
     }
