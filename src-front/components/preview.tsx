@@ -8,7 +8,7 @@ import { ResultItem } from "../core";
  */
 export class ResultPreviewPlaceholder extends React.Component {
     render() {
-        return (<div className="node-selector-placeholder"></div>);
+        return <div className="node-selector-placeholder"></div>;
     }
 }
 
@@ -43,10 +43,10 @@ export class ResultPreview extends React.Component<ResultPreviewProps> {
     render() {
         let image;
         if (this.props.item.image) {
-            image = (<img alt="" src={this.props.item.image}/>);
+            image = <img alt="" src={this.props.item.image}/>;
         }
 
-        const content = (<div><span className="title">{this.props.item.title}</span>{image}</div>);
+        const content = <div><span className="title">{this.props.item.title}</span>{image}</div>;
 
         if (this.props.onClick) {
             return (
