@@ -481,7 +481,8 @@ function createResultItemStub(id) {
         updated: "",
         type: "",
         human_type: "",
-        output: ""
+        output: "",
+        image: ""
     };
 }
 exports.createResultItemStub = createResultItemStub;
@@ -1706,10 +1707,15 @@ var ResultPreview = function (_super) {
         }
     };
     ResultPreview.prototype.render = function () {
-        if (this.props.onClick) {
-            return React.createElement("a", { onClick: this.onClick, className: "node-selector-item", "data-active": this.props.active }, React.createElement("span", { className: "title" }, this.props.item.title));
+        var image;
+        if (this.props.item.image) {
+            image = React.createElement("img", { alt: "", src: this.props.item.image });
         }
-        return React.createElement("div", { className: "node-selector-item", "data-active": this.props.active }, React.createElement("span", { "data-active": this.props.active, className: "title" }, this.props.item.title));
+        var content = React.createElement("div", null, React.createElement("span", { className: "title" }, this.props.item.title), image);
+        if (this.props.onClick) {
+            return React.createElement("a", { onClick: this.onClick, className: "node-selector-item", "data-active": this.props.active }, content);
+        }
+        return React.createElement("div", { className: "node-selector-item", "data-active": this.props.active }, content);
     };
     return ResultPreview;
 }(React.Component);

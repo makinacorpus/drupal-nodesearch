@@ -117,7 +117,7 @@ function nodesearch_element_process($element) {
       trigger_error("nodesearch widget contains one or more node that don't exist", E_USER_NOTICE);
     }
     foreach ($nodes as $node) {
-      $output[] = nodesearch_result($node);
+      $output[] = nodesearch_result($node, true, true);
     }
     // In all cases, normalize values input (ordering is kept here).
     $values = array_keys($nodes);

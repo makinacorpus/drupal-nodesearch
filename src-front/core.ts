@@ -9,14 +9,15 @@ export interface Search {
 }
 
 export interface ResultItem {
-    readonly id: string
-    readonly title: string
+    readonly id: string;
+    readonly title: string;
     readonly status: number;
     readonly created: string;
-    readonly updated: string
+    readonly updated: string;
     readonly type: string;
     readonly human_type: string;
     readonly output: string;
+    readonly image: string;
 }
 
 export function createResultItemStub(id: string): ResultItem {
@@ -29,6 +30,7 @@ export function createResultItemStub(id: string): ResultItem {
         type: "",
         human_type: "",
         output: "",
+        image: "",
     };
 }
 

@@ -137,15 +137,13 @@ function nodesearch_page_test_form_submit($form, &$form_state) {
 /**
  * Build result array from node
  *
- * @param \stdClass $node
- *
  * @return string[]
  */
-function nodesearch_result($node) : array {
+function nodesearch_result($node, bool $withOutput = false, bool $withImage = false) : array {
 
   $types = node_type_get_names();
 
-  if (variable_get('nodesearch_endpoint_add_view', false)) {
+  if ($withOutput) {
     $output = node_view($node, variable_get('nodesearch_endpoint_view_mode', 'teaser'));
     $output = drupal_render($output);
   } else {
@@ -161,7 +159,95 @@ function nodesearch_result($node) : array {
     'type'        => $node->type,
     'human_type'  => $types[$node->type] ?? $node->type,
     'output'      => $output,
+    'image'       => $withImage ? nodesearch_find_image($node) : '',
   ];
+}
+
+/**
+ * Attempt to find a suitable image style automatically
+ */
+function nodesearch_find_image_style() : string {
+  $styles = image_styles();
+
+  // Attempt with the standard profile defaults, most people keep a thumbnail
+  // image style somehow. A square one would be better.
+  if (isset($styles['thumbnail'])) {
+    return 'thumbnail';
+  }
+  if (isset($styles['medium'])) {
+    return 'medim';
+  }
+
+  return 'full';
+}
+
+/**
+ * Find image field for given node type
+ */
+function nodesearch_find_image_field(string $type) : array {
+  $candidates = [];
+
+  if ($config = variable_get('nodesearch_preview_image_field')) {
+    if (isset($config[$type])) {
+      $candidates = is_array($config[$type]) ? $config[$type] : [$config[$type]];
+    }
+  }
+
+  // @todo cache result
+  if (!$candidates) {
+    foreach (field_info_instances('node', $type) as $field_name => $instance) {
+      $field = field_info_field($field_name);
+      if ('image' === $field['type'] || 'unoderef' === $field['type']) {
+        $candidates[] = $field_name;
+      }
+    }
+  }
+
+  return $candidates;
+}
+
+/**
+ * From the given node, attempt to find an image within and return an absolute
+ * usable image
+ *
+ * @param \stdClass $node
+ * @param string $image_style
+ *
+ * @return null|string
+ *   Absolute usable image for display
+ */
+function nodesearch_find_image($node) : string {
+  $image_style = variable_get('nodesearch_preview_image_style', null) ?? nodesearch_find_image_style();
+
+  if (!$candidates = nodesearch_find_image_field($node->type)) {
+    return '';
+  }
+
+  foreach ($candidates as $candidate) {
+    if ($items = field_get_items('node', $node, $candidate)) {
+
+      // 'image' field type.
+      if (isset($items[0]['uri'])) {
+        return image_style_url($image_style, $items[0]['uri']);
+      }
+
+      // 'unoderef' field type: this requires recursivity.
+      // @todo
+      //   - write a recursivity breaker
+      //   - make it faster
+      if (isset($items[0]['nid'])) {
+        foreach ($items as $item) {
+          if ($child = node_load($item['nid'])) {
+            if ($result = nodesearch_find_image($child)) {
+              return $result;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return '';
 }
 
 /**
@@ -178,6 +264,7 @@ function nodesearch_page_endpoint() {
   $prefixWildcard = (bool)variable_get('nodesearch_endpoint_prefix_wildcard_enable', true);
   $limit          = (int)variable_get('nodesearch_endpoint_limit_default', 12);
   $includeOutput  = variable_get('nodesearch_endpoint_add_view', false);
+  $includeImage   = variable_get('nodesearch_endpoint_add_image', true);
   $sortField      = 'updated';
   $sortFieldReal  = null;
   $sortOrder      = 'desc';
@@ -326,11 +413,11 @@ function nodesearch_page_endpoint() {
     $query->range(($page - 1) * $limit, $limit);
 
     // That should do it.
-    if ($includeOutput) {
+    if ($includeOutput || $includeImage) {
       $nidList = $query->execute()->fetchCol();
       if ($nidList) {
         foreach (node_load_multiple($nidList) as $node) {
-          $result[] = nodesearch_result($node);
+          $result[] = nodesearch_result($node, $includeOutput, $includeImage);
         }
       }
     } else {

@@ -32,21 +32,24 @@ export class ResultPreview extends React.Component<ResultPreviewProps> {
     }
 
     render() {
+        let image;
+        if (this.props.item.image) {
+            image = (<img alt="" src={this.props.item.image}/>);
+        }
+
+        const content = (<div><span className="title">{this.props.item.title}</span>{image}</div>);
+
         if (this.props.onClick) {
             return (
                 <a onClick={this.onClick} className="node-selector-item" data-active={this.props.active}>
-                    <span className="title">
-                        {this.props.item.title}
-                    </span>
+                    {content}
                 </a>
             );
         }
 
         return (
             <div className="node-selector-item" data-active={this.props.active}>
-                <span data-active={this.props.active} className="title">
-                    {this.props.item.title}
-                </span>
+                {content}
             </div>
         );
     }
