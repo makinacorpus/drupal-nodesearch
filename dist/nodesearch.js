@@ -485,6 +485,17 @@ function createResultItemStub(id) {
     };
 }
 exports.createResultItemStub = createResultItemStub;
+function createSearch(defaults, result) {
+    defaults = defaults || {};
+    if (result) {
+        defaults.page = defaults.page || result.page;
+        defaults.search = defaults.search || result.search;
+        defaults.sort_field = defaults.sort_field || result.sort_field;
+        defaults.sort_order = defaults.sort_order || result.sort_order;
+    }
+    return defaults;
+}
+exports.createSearch = createSearch;
 function encodeComponent(name, value) {
     return encodeURIComponent(name) + "=" + encodeURIComponent(value.toString());
 }
@@ -1321,7 +1332,6 @@ Drupal.behaviors.nodeSearch = {
         for (var _i = 0, _a = context.querySelectorAll("[data-nodesearch=\"true\"]"); _i < _a.length; _i++) {
             var widget = _a[_i];
             widget_1.SelectorWidgetInit(widget);
-            console.log("gotcha");
         }
     }
 };
@@ -1386,9 +1396,12 @@ var SelectorWidget = function (_super) {
             return item;
         });
         _this.state = { values: values };
+        _this.defaults = values.concat([]);
         _this.onCloseClick = _this.onCloseClick.bind(_this);
+        _this.onCancelClick = _this.onCancelClick.bind(_this);
         _this.onOpenClick = _this.onOpenClick.bind(_this);
         _this.onSearchChange = _this.onSearchChange.bind(_this);
+        _this.typeFilter = _this.typeFilter.bind(_this);
         _this.valueAdd = _this.valueAdd.bind(_this);
         _this.valueRemove = _this.valueRemove.bind(_this);
         return _this;
@@ -1398,34 +1411,29 @@ var SelectorWidget = function (_super) {
     };
     SelectorWidget.prototype.refresh = function (search) {
         var _this = this;
-        if (!search) {
-            search = {};
-        }
-        if (this.state.result) {
-            if (!search.limit) {
-                search.limit = this.props.limit || WIDGET_DEFAULT_LIMIT;
-            }
-            if (!search.page) {
-                search.page = this.state.result.page;
-            }
-            if (!search.search) {
-                search.search = this.state.result.search;
-            }
-            if (!search.sort_field) {
-                search.sort_field = this.state.result.sort_field;
-            }
-            if (!search.sort_order) {
-                search.sort_order = this.state.result.sort_order;
-            }
-            if (!search.types) {
-                search.types = this.props.types;
-            }
-        }
+        search = search || {};
+        search.limit = search.limit || this.props.limit || WIDGET_DEFAULT_LIMIT;
+        search.types = search.types || this.props.types;
+        search = Core.createSearch(search, this.state.result);
         Core.doSearch(search).then(function (result) {
             return _this.setState({ result: result });
         }).catch(function (error) {
             return console.log(error);
         });
+    };
+    SelectorWidget.prototype.typeFilter = function (bundle, checked) {
+        var current = this.state.result ? this.state.result.types : [];
+        if (checked) {
+            if (-1 === current.indexOf(bundle)) {
+                current = current.concat([bundle]);
+            }
+        } else {
+            var index = void 0;
+            while (-1 !== (index = current.indexOf(bundle))) {
+                current.splice(index, 1);
+            }
+        }
+        this.refresh({ types: current.length ? current : this.props.types });
     };
     SelectorWidget.prototype.valueAdd = function (value) {
         var values;
@@ -1464,6 +1472,12 @@ var SelectorWidget = function (_super) {
         this.setState({ dialogOpened: true });
         this.refresh();
     };
+    SelectorWidget.prototype.onCancelClick = function (event) {
+        event.preventDefault();
+        this.props.onUpdate(this.defaults);
+        this.setState({ dialogOpened: false, values: this.defaults });
+        this.refresh();
+    };
     SelectorWidget.prototype.render = function () {
         var _this = this;
         var dialog = null;
@@ -1473,15 +1487,37 @@ var SelectorWidget = function (_super) {
         var result = this.state.result ? this.state.result.result : [];
         if (this.state.dialogOpened) {
             var searchValue = this.state.result ? this.state.result.search : "";
-            var pager = void 0;
-            if (this.state.result) {
-                pager = React.createElement(pager_1.Pager, { onClick: function onClick(page) {
-                        return _this.refresh({ page: page });
-                    }, autoHide: false, page: this.state.result.page || 1, total: this.state.result.total || 0, limit: this.state.result.limit || 1 });
-            } else {
-                pager = React.createElement(pager_1.Pager, { onClick: function onClick() {}, autoHide: false, page: 1, total: 0, limit: 1 });
+            var page = this.state.result ? this.state.result.page : 1;
+            var total = this.state.result ? this.state.result.total : 0;
+            var limit = this.state.result ? this.state.result.limit : 1;
+            var checkboxes = [];
+            var types = [];
+            if (this.props.types && this.props.types.length) {
+                types = this.props.types;
+            } else if (this.state.result) {
+                types = Object.keys(this.state.result.types_all);
             }
-            dialog = React.createElement(dialog_1.Dialog, { title: this.props.title || "Search content", doClose: this.onCloseClick }, React.createElement("input", { name: "search", onChange: this.onSearchChange, placeholder: this.props.placeholder || "Type here some text to search content...", type: "text", value: searchValue }), React.createElement(preview_1.ResultPreviewList, { active: active, data: result, onItemClick: this.valueAdd, maxItemCount: this.props.limit || WIDGET_DEFAULT_LIMIT }), pager, React.createElement("div", { className: "current" }, React.createElement("h2", null, "Current selection"), React.createElement(preview_1.ResultPreviewList, { active: active, data: this.state.values, onItemClick: this.valueRemove, maxItemCount: this.props.maxCount, sortable: true })), React.createElement("div", { className: "footer" }, React.createElement("button", { className: "btn btn-success", name: "submit", onClick: this.onCloseClick }, "Select")));
+            if (types.length) {
+                var _loop_1 = function _loop_1(bundle) {
+                    var label = bundle;
+                    var checked = false;
+                    if (this_1.state.result) {
+                        label = this_1.state.result.types_all[bundle] || bundle;
+                        checked = -1 !== this_1.state.result.types.indexOf(bundle);
+                    }
+                    checkboxes.push(React.createElement("label", null, React.createElement("input", { type: "checkbox", checked: checked, key: "filter-" + bundle, name: bundle, onClick: function onClick(event) {
+                            return _this.typeFilter(bundle, event.currentTarget.checked);
+                        } }), "\xA0", label));
+                };
+                var this_1 = this;
+                for (var _i = 0, types_1 = types; _i < types_1.length; _i++) {
+                    var bundle = types_1[_i];
+                    _loop_1(bundle);
+                }
+            }
+            dialog = React.createElement(dialog_1.Dialog, { title: this.props.title || "Search content", doClose: this.onCloseClick }, React.createElement("input", { name: "search", onChange: this.onSearchChange, placeholder: this.props.placeholder || "Type here some text to search content...", type: "text", value: searchValue }), React.createElement("div", { className: "filter" }, checkboxes), React.createElement(preview_1.ResultPreviewList, { active: active, data: result, onItemClick: this.valueAdd, maxItemCount: this.props.limit || WIDGET_DEFAULT_LIMIT }), React.createElement(pager_1.Pager, { onClick: function onClick(page) {
+                    return _this.refresh({ page: page });
+                }, autoHide: false, page: page, total: total, limit: limit }), React.createElement("div", { className: "current" }, React.createElement("h2", null, "Current selection"), React.createElement(preview_1.ResultPreviewList, { active: active, data: this.state.values, onItemClick: this.valueRemove, maxItemCount: this.props.maxCount, removable: true, sortable: true })), React.createElement("div", { className: "footer" }, React.createElement("button", { className: "btn btn-danger", name: "submit", onClick: this.onCancelClick }, "Cancel"), React.createElement("button", { className: "btn btn-success pull-right", name: "submit", onClick: this.onCloseClick }, "Select")));
         }
         return React.createElement("div", { className: "node-selector" }, React.createElement(preview_1.ResultPreviewList, { active: active, data: this.state.values, onItemSort: function onItemSort() {}, sortable: true }), React.createElement("button", { className: "btn btn-default", onClick: this.onOpenClick }, this.props.buttonTitle || "Select"), dialog);
     };
@@ -1530,6 +1566,8 @@ function SelectorWidgetInit(target) {
         maxCount: parseInt(target.getAttribute("data-max") || "") || 1,
         types: (target.getAttribute("data-bundle") || "").split(",").map(function (value) {
             return value.trim();
+        }).filter(function (value) {
+            return value.length;
         }),
         onUpdate: function onUpdate(values) {
             return target.value = values.map(function (item) {
@@ -1739,7 +1777,6 @@ var ResultPreviewList = function (_super) {
     function ResultPreviewList(props) {
         var _this = _super.call(this, props) || this;
         _this.onItemClick = _this.onItemClick.bind(_this);
-        _this.sortable = React.createRef();
         return _this;
     }
     ResultPreviewList.prototype.componentDidMount = function () {};
@@ -1750,14 +1787,20 @@ var ResultPreviewList = function (_super) {
     };
     ResultPreviewList.prototype.render = function () {
         var _this = this;
-        var classNameSuffix = this.props.sortable ? " sortable" : "";
+        var classes = ["results"];
+        if (this.props.sortable) {
+            classes.push("sortable");
+        }
+        if (this.props.removable) {
+            classes.push("removable");
+        }
         var placeholders = [];
         if (this.props.maxItemCount) {
             for (var i = this.props.data.length; i < this.props.maxItemCount; ++i) {
                 placeholders.push("placeholder-" + i);
             }
         }
-        return React.createElement("div", { ref: this.sortable, className: "results" + classNameSuffix }, this.props.data.map(function (item) {
+        return React.createElement("div", { className: classes.join(" ") }, this.props.data.map(function (item) {
             return React.createElement(ResultPreview, { key: item.id, item: item, active: -1 !== _this.props.active.indexOf(item.id), onClick: function onClick() {
                     return _this.onItemClick(item);
                 } });

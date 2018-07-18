@@ -70,10 +70,11 @@ export class ResultPreview extends React.Component<ResultPreviewProps> {
 export interface ResultPreviewListProps {
     readonly active: string[];
     readonly data: ResultItem[];
+    readonly maxItemCount?: number;
     readonly onItemClick?: (item: ResultItem) => void;
     readonly onItemSort?: (item: ResultItem[]) => void;
     readonly sortable?: boolean;
-    readonly maxItemCount?: number;
+    readonly removable?: boolean;
 }
 
 /**
@@ -81,13 +82,10 @@ export interface ResultPreviewListProps {
  */
 export class ResultPreviewList extends React.Component<ResultPreviewListProps> {
 
-    private readonly sortable: React.RefObject<HTMLDivElement>;
-
     constructor(props: ResultPreviewListProps) {
         super(props);
 
         this.onItemClick = this.onItemClick.bind(this);
-        this.sortable = React.createRef();
     }
 
     componentDidMount() {
@@ -129,7 +127,14 @@ export class ResultPreviewList extends React.Component<ResultPreviewListProps> {
     }
 
     render() {
-        const classNameSuffix = this.props.sortable ? " sortable" : "";
+        const classes = ["results"];
+        if (this.props.sortable) {
+            classes.push("sortable");
+        }
+        if (this.props.removable) {
+            classes.push("removable");
+        }
+
         const placeholders = [];
         if (this.props.maxItemCount) {
             for (let i = this.props.data.length; i < this.props.maxItemCount; ++i) {
@@ -138,7 +143,7 @@ export class ResultPreviewList extends React.Component<ResultPreviewListProps> {
         }
 
         return (
-            <div ref={this.sortable} className={"results" + classNameSuffix}>
+            <div className={classes.join(" ")}>
                 {this.props.data.map((item) => <ResultPreview
                     key={item.id}
                     item={item}

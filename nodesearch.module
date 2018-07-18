@@ -106,7 +106,7 @@ function nodesearch_page_test_form($form, &$form_state) {
     '#multiple'       => true,
     '#min'            => 2,
     '#max'            => 6,
-    '#bundles'        => 'page',
+    //'#bundles'        => 'page',
   ];
 
   $form['submit'] = [
@@ -259,6 +259,7 @@ function nodesearch_page_endpoint() {
   $sortFieldReal  = null;
   $sortOrder      = 'desc';
   $allowedTypes   = node_type_get_names();
+  $types          = [];
   $page           = 1;
 
   // Without any types configured, this serves no purpose
@@ -420,11 +421,13 @@ function nodesearch_page_endpoint() {
   }
 
   drupal_json_output([
-    'page'        => $page,
     'limit'       => $limit,
-    'total'       => $total,
+    'page'        => $page,
+    'result'      => $result,
     'sort_field'  => $sortField,
     'sort_order'  => $sortOrder,
-    'result'      => $result,
+    'total'       => $total,
+    'types'       => empty($types) ? array_keys($allowedTypes) : $types,
+    'types_all'   => $allowedTypes,
   ]);
 }

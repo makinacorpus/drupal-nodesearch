@@ -18,14 +18,14 @@
 }
 .node-selector-dialog .dialog {
   position: fixed;
-  width: 830px;
+  width: 801px;
   top: 50px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 2001;
   background: white;
   box-shadow: 0 0 5px black;
-  padding: 2rem 3rem;
+  padding: 1.5rem 2rem;
   border-radius: 5px;
 }
 @media (max-height: 760px) {
@@ -38,7 +38,7 @@
     min-height: 100vh;
   }
 }
-@media (max-width: 830px) {
+@media (max-width: 801px) {
   .node-selector-dialog .dialog {
     top: 0;
     left: 0;
@@ -49,7 +49,8 @@
   }
 }
 .node-selector-dialog .dialog h1 {
-  font-size: 1.5em;
+  font-size: 1em;
+  font-weight: bold;
   text-align: center;
   margin: 0;
   margin-bottom: 1rem;
@@ -75,30 +76,49 @@
   width: 100%;
   margin-bottom: 1rem;
 }
+.node-selector .filter > * {
+  margin-right: 1em;
+}
+.node-selector .filter > *:last-child {
+  margin-right: 0;
+}
 .node-selector .results {
   list-style: none;
   display: flex;
   flex-wrap: wrap;
   margin: 0;
   padding: 0;
+  margin-bottom: 1em;
 }
 .node-selector .results:not(.sortable) {
-  margin: -5px;
+  margin-left: -5px;
+  margin-right: -5px;
 }
 .node-selector .results > div {
   flex: initial;
-  margin: 0;
-  padding: 1rem;
+  /* margin: 0; */
+  /* padding: 1rem; */
 }
 .node-selector .current {
   margin-bottom: 1rem;
 }
+.node-selector .current h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 .node-selector .sortable {
-  border: 2px dashed #018fe2;
-  background: rgba(1, 143, 226, 0.2);
-  padding: .5em;
+  border: 2px dashed #686868;
+  border-radius: 3px;
+  background: rgba(149, 149, 149, 0.2);
+  padding: .5rem;
   width: 100%;
-  min-height: 138px;
+  min-height: 124px;
   transition: all .5s ease;
 }
 .node-selector .sortable > * {
@@ -106,8 +126,8 @@
 }
 .node-selector .node-selector-item {
   visibility: visible !important;
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   display: block;
   margin: 5px;
   overflow: hidden;
@@ -119,7 +139,8 @@
   cursor: pointer;
 }
 .node-selector .node-selector-item .title {
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: bold;
   position: absolute;
   color: white;
   margin: 0;
@@ -127,7 +148,6 @@
   top: 0;
   left: 0;
   right: 0;
-  opacity: 0.8;
   background-color: #333;
   z-index: 1;
 }
@@ -149,8 +169,8 @@
 }
 .node-selector .node-selector-placeholder {
   visibility: visible !important;
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   display: block;
   margin: 5px;
   overflow: hidden;
@@ -158,7 +178,7 @@
   padding-left: 0;
   padding-right: 0;
 }
-@media (max-width: 830px) {
+@media (max-width: 801px) {
   .node-selector .node-selector-placeholder {
     display: none;
     visibility: hidden;

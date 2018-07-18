@@ -32,9 +32,24 @@ export function createResultItemStub(id: string): ResultItem {
     };
 }
 
+export function createSearch(defaults?: Search, result?: Result): Search {
+    defaults = defaults || {};
+    if (result) {
+        defaults.page = defaults.page || result.page;
+        defaults.search = defaults.search || result.search;
+        defaults.sort_field = defaults.sort_field || result.sort_field;
+        defaults.sort_order = defaults.sort_order || result.sort_order;
+    }
+    return defaults;
+}
+
 export interface Result extends Search {
-    total: number;
-    result: ResultItem[];
+    readonly limit: number;
+    readonly page: number;
+    /* readonly */ result: ResultItem[];
+    /* readonly */ total: number;
+    readonly types: string[];
+    readonly types_all: any;
 }
 
 function encodeComponent(name: string, value: any): string {

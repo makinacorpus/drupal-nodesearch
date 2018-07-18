@@ -74,6 +74,8 @@ interface WidgetState {
  */
 export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 
+    private readonly defaults: ResultItem[];
+
     constructor(props: WidgetProps) {
         super(props);
 
@@ -85,10 +87,13 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
         });
 
         this.state = {values};
+        this.defaults = values.concat([]); // Array copy
 
         this.onCloseClick = this.onCloseClick.bind(this);
+        this.onCancelClick = this.onCancelClick.bind(this);
         this.onOpenClick = this.onOpenClick.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
+        this.typeFilter = this.typeFilter.bind(this);
         this.valueAdd = this.valueAdd.bind(this);
         this.valueRemove = this.valueRemove.bind(this);
     }
@@ -98,40 +103,38 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
     }
 
     private refresh(search?: Search) {
-        if (!search) {
-            search = {};
-        }
-
+        search = search || {};
         // Do not loose the current filters, only override.
-        if (this.state.result) {
-            if (!search.limit) {
-                search.limit = this.props.limit || WIDGET_DEFAULT_LIMIT;
-            }
-            if (!search.page) {
-                search.page = this.state.result.page;
-            }
-            if (!search.search) {
-                search.search = this.state.result.search;
-            }
-            if (!search.sort_field) {
-                search.sort_field = this.state.result.sort_field;
-            }
-            if (!search.sort_order) {
-                search.sort_order = this.state.result.sort_order;
-            }
-            if (!search.types) {
-                search.types = this.props.types;
-            }
-        }
-
+        search.limit = search.limit || this.props.limit || WIDGET_DEFAULT_LIMIT;
+        search.types = search.types || this.props.types;
+        search = Core.createSearch(search, this.state.result);
+        // Where the magic happens
         Core.doSearch(search)
             .then((result) => this.setState({result: result}))
             .catch((error) => console.log(error))
         ;
     }
 
+    private typeFilter(bundle: string, checked: boolean) {
+        let current = this.state.result ? this.state.result.types : [];
+
+        if (checked) {
+            if (-1 === current.indexOf(bundle)) {
+                current = current.concat([bundle]);
+            }
+        } else {
+            let index: number;
+            while (-1 !== (index = current.indexOf(bundle))) {
+                current.splice(index, 1);
+            }
+        }
+
+        this.refresh({types: current.length ? current : this.props.types});
+    }
+
     private valueAdd(value: ResultItem) {
         let values;
+
         if (this.props.maxCount === 1) {
             values = [value];
         } else if (this.props.maxCount && this.state.values.length >= this.props.maxCount) {
@@ -140,6 +143,7 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
         } else {
             values = this.state.values.concat([value]);
         }
+
         this.props.onUpdate(values);
         this.setState({values: values});
     }
@@ -172,6 +176,13 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
         this.refresh();
     }
 
+    private onCancelClick(event: React.MouseEvent<HTMLButtonElement>) {
+        event.preventDefault();
+        this.props.onUpdate(this.defaults); // Restore defaults
+        this.setState({dialogOpened: false, values: this.defaults});
+        this.refresh();
+    }
+
     render() {
         let dialog = null;
         const active = this.state.values.map((item) => item.id);
@@ -179,12 +190,30 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 
         if (this.state.dialogOpened) {
             const searchValue = this.state.result ? this.state.result.search : "";
+            const page = this.state.result ? this.state.result.page : 1;
+            const total = this.state.result ? this.state.result.total : 0;
+            const limit = this.state.result ? this.state.result.limit : 1;
 
-            let pager;
-            if (this.state.result) {
-                pager = <Pager onClick={(page) => this.refresh({page: page})} autoHide={false} page={this.state.result.page || 1} total={this.state.result.total || 0} limit={this.state.result.limit || 1}/>
-            } else {
-                pager = <Pager onClick={() => {}} autoHide={false} page={1} total={0} limit={1}/>
+            const checkboxes = [];
+            let types: string[] = [];
+
+            if (this.props.types && this.props.types.length) {
+                types = this.props.types;
+            } else if (this.state.result) { 
+                // Defaults to know types returned by the AJAX request
+                types = Object.keys(this.state.result.types_all);
+            }
+
+            if (types.length) {
+                for (let bundle of types) {
+                    let label = bundle;
+                    let checked = false;
+                    if (this.state.result) {
+                        label =  this.state.result.types_all[bundle] || bundle;
+                        checked = (-1 !== this.state.result.types.indexOf(bundle));
+                    }
+                    checkboxes.push(<label><input type="checkbox" checked={checked} key={"filter-" + bundle} name={bundle} onClick={(event) => this.typeFilter(bundle, event.currentTarget.checked)}/>&nbsp;{label}</label>);
+                }
             }
 
             dialog = (
@@ -196,13 +225,16 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
                         type="text"
                         value={searchValue}
                     />
+                    <div className="filter">
+                        {checkboxes}
+                    </div>
                     <ResultPreviewList
                         active={active}
                         data={result}
                         onItemClick={this.valueAdd}
                         maxItemCount={this.props.limit || WIDGET_DEFAULT_LIMIT}
                     />
-                    {pager}
+                    <Pager onClick={(page) => this.refresh({page: page})} autoHide={false} page={page} total={total} limit={limit}/>
                     <div className="current">
                         <h2>Current selection</h2>
                         <ResultPreviewList
@@ -210,11 +242,15 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
                             data={this.state.values}
                             onItemClick={this.valueRemove}
                             maxItemCount={this.props.maxCount}
+                            removable
                             sortable
                         />
                     </div>
                     <div className="footer">
-                        <button className="btn btn-success" name="submit" onClick={this.onCloseClick}>
+                        <button className="btn btn-danger" name="submit" onClick={this.onCancelClick}>
+                            Cancel
+                        </button>
+                        <button className="btn btn-success pull-right" name="submit" onClick={this.onCloseClick}>
                             Select
                         </button>
                     </div>
@@ -240,8 +276,7 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 }
 
 /**
- * Spawn the dialog in the given element, beware that the element will be
- * replaced by the dialog, DO NOT GIVE AN NON EMPTY ELEMENT here.
+ * Spawn the dialog in the given element.
  */
 export function SelectorWidgetInit(target: HTMLInputElement) {
 
@@ -283,7 +318,7 @@ export function SelectorWidgetInit(target: HTMLInputElement) {
         placeholder: target.getAttribute("placeholder") || target.getAttribute("data-placeholder") || "",
         minCount: parseInt(target.getAttribute("data-min") || "") || 0,
         maxCount: parseInt(target.getAttribute("data-max") || "") || 1,
-        types: (target.getAttribute("data-bundle") || "").split(",").map(value => value.trim()),
+        types: (target.getAttribute("data-bundle") || "").split(",").map(value => value.trim()).filter((value) => value.length),
         // Restore values into the hidden widget, that will be really POST'ed.
         onUpdate: (values: ResultItem[]) => target.value = values.map(item => item.id).join(","),
     };
