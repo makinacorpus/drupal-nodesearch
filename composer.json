@@ -1,19 +1,32 @@
 {
-    "name" : "makinacorpus/drupal-nodesearch",
-    "type" : "drupal-module",
-    "description" : "Node selector and search endpoint",
-    "homepage" : "http://github.com/makinacorpus/drupal-nodesearch",
-    "license" : "GPL-2.0",
-    "authors" : [
+    "name": "makinacorpus/drupal-nodesearch",
+    "type": "drupal-module",
+    "description": "Node selector and search endpoint",
+    "homepage": "http://github.com/makinacorpus/drupal-nodesearch",
+    "license": "GPL-2.0",
+    "authors": [
         {
-            "name" : "Pierre Rineau",
-            "email" : "pierre.rineau@makina-corpus.com"
+            "name": "Pierre Rineau",
+            "email": "pierre.rineau@makina-corpus.com"
         },
         {
-            "name" : "Makina Corpus",
-            "homepage" : "http://makina-corpus.com"
+            "name": "Makina Corpus",
+            "homepage": "http://makina-corpus.com"
         }
     ],
-    "minimum-stability" : "dev",
-    "prefer-stable" : true
+    "autoload": {
+        "psr-4": {
+            "MakinaCorpus\\Drupal\\NodeSearch\\" : "src/"
+        }
+    },
+    "requires": {
+        "makinacorpus/calista-core": "*",
+        "makinacorpus/drupal-sf-dic": "^3 || ^4"
+    },
+    "suggests": {
+        "makinacorpus/drupal-ulink": "Simple entity or external link field, this modules brings a widget for it",
+        "makinacorpus/drupal-unoderef": "Simple node reference field, this modules brings a widget for it"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

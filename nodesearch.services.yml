@@ -1,0 +1,7 @@
+services:
+  nodesearch_node_searcher:
+    class: MakinaCorpus\Drupal\NodeSearch\NodeSearcher
+    arguments: ["%kernel.debug%"]
+  nodesearch_result_formatter:
+    class: MakinaCorpus\Drupal\NodeSearch\NodeResultFormatter
+    arguments: ["@entity.manager"]

@@ -116,9 +116,9 @@ function nodesearch_element_process($element) {
     if (count($nodes) !== count($values)) {
       trigger_error("nodesearch widget contains one or more node that don't exist", E_USER_NOTICE);
     }
-    foreach ($nodes as $node) {
-      $output[] = nodesearch_result($node, true);
-    }
+    /** @var \MakinaCorpus\Drupal\NodeSearch\NodeResultFormatter $formatter */
+    $formatter = \Drupal::service('nodesearch_result_formatter');
+    $output = $formatter->createResultAll($nodes, true);
     // In all cases, normalize values input (ordering is kept here).
     $values = array_keys($nodes);
   }
