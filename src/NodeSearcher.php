@@ -122,14 +122,14 @@ class NodeSearcher
         $select->addTag('nodesearch');
 
         $types = [];
-        if ($query->has('type')) {
-            $select->condition('n.type', $types = $query->get('type'));
+        if ($query->has('type') && ($types = $query->get('type'))) {
+            $select->condition('n.type', $types);
         } else {
             $select->condition('n.type', \array_keys($allowedTypes));
         }
 
         if ($query->has('status')) {
-            $select->condition((int)(bool)$query->get('status'));
+            $select->condition('n.status', (int)(bool)$query->get('status'));
         } else if ($this->publishedOnly) {
             $select->condition('n.status', 1);
         }
@@ -154,7 +154,7 @@ class NodeSearcher
         if ($userId) {
             if ($query->get('user_touched')) {
                 $revisionExists = \db_select('node_revision', 'r')
-                    ->condition('r.uid', $query->has('revision_user_id'))
+                    ->condition('r.uid', (int)(bool)$query->has('revision_user_id'))
                     ->where("r.nid = n.nid")
                     ->range(0, 1)
                 ;
@@ -216,7 +216,7 @@ class NodeSearcher
             'sort_field'  => $query->getSortField(),
             'sort_order'  => $query->getSortOrder(),
             'total'       => $total,
-            'types'       => $types ? $types : \array_keys($allowedTypes),
+            'types'       => $types ? (is_array($types) ? $types : [$types]) : \array_keys($allowedTypes),
             'types_all'   => $allowedTypes,
         ];
     }

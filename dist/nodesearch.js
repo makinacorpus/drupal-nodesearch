@@ -518,7 +518,7 @@ function doSearch(search) {
             parameters.push(encodeComponent('sort_order', search.sort_order));
         }
         if (search.types) {
-            parameters.push(encodeComponent('type', search.types.join(',')));
+            parameters.push(encodeComponent('type', search.types.join('|')));
         }
         var req = new XMLHttpRequest();
         req.open('GET', '/ajax/node/search?' + parameters.join('&'));

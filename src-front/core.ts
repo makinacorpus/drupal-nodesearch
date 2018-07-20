@@ -76,7 +76,7 @@ export function doSearch(search: Search): Promise<Result> {
             parameters.push(encodeComponent('sort_order', search.sort_order));
         }
         if (search.types) {
-            parameters.push(encodeComponent('type', search.types.join(',')));
+            parameters.push(encodeComponent('type', search.types.join('|')));
         }
 
         const req = new XMLHttpRequest();
