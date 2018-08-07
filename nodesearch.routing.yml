@@ -1,0 +1,14 @@
+nodesearch.search:
+    path: /ajax/node/search
+    defaults:
+        _controller: \MakinaCorpus\Drupal\NodeSearch\EndpointController::search
+    requirements:
+        _permission: access content
+
+nodesearch.test:
+    path: /node/search/test
+    defaults:
+        _form: \MakinaCorpus\Drupal\NodeSearch\ExampleForm
+        _title: Node search widget example
+    requirements:
+        _permission: non existing permission

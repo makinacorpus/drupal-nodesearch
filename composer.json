@@ -3,7 +3,7 @@
     "type": "drupal-module",
     "description": "Node selector and search endpoint",
     "homepage": "http://github.com/makinacorpus/drupal-nodesearch",
-    "license": "GPL-2.0",
+    "license": "GPL-2.0-or-later",
     "authors": [
         {
             "name": "Pierre Rineau",
@@ -19,13 +19,10 @@
             "MakinaCorpus\\Drupal\\NodeSearch\\" : "src/"
         }
     },
-    "requires": {
-        "makinacorpus/calista-core": "*",
-        "makinacorpus/drupal-sf-dic": "^3 || ^4"
-    },
-    "suggests": {
-        "makinacorpus/drupal-ulink": "Simple entity or external link field, this modules brings a widget for it",
-        "makinacorpus/drupal-unoderef": "Simple node reference field, this modules brings a widget for it"
+    "require": {
+        "drupal/core": "~8",
+        "makinacorpus/calista-core": "^1",
+        "makinacorpus/drupal-int": "^3.4 || ^4"
     },
     "minimum-stability": "dev",
     "prefer-stable": true

@@ -6,14 +6,8 @@ use MakinaCorpus\Calista\Query\InputDefinition;
 use MakinaCorpus\Calista\Query\Query;
 use MakinaCorpus\Calista\Query\Filter;
 
-/**
- * @tainted Drupal 7
- */
 class NodeSearcher
 {
-    const LIMIT_DEFAULT = 12;
-    const LIMIT_MAX = 100;
-
     /**
      * Get allowed node type names
      *
@@ -25,7 +19,7 @@ class NodeSearcher
     {
         $types = node_type_get_names();
         // Filter out site-wide black listed content types.
-        if ($blacklisted = variable_get('nodesearch_endpoint_node_type_blacklist', [])) {
+        if ($blacklisted = [] /* variable_get('nodesearch_endpoint_node_type_blacklist', []) */) {
             $types = \array_diff_key($types, array_flip($blacklisted));
         }
 
@@ -51,23 +45,26 @@ class NodeSearcher
     }
 
     private $debug = false;
-    private $limitDefault = self::LIMIT_DEFAULT;
-    private $limitMax = self::LIMIT_MAX;
+    private $limitDefault = 12;
+    private $limitMax = 100;
     private $publishedOnly = true;
     private $wildcardAllowPrefix = true;
 
     /**
      * Default constructor
      */
-    public function __construct(bool $debug = true)
-    {
+    public function __construct(
+        int $limitDefault = 12,
+        int $limitMax = 100,
+        bool $publishedOnly = true,
+        bool $wildcardPrefix = true,
+        bool $debug = true
+    ) {
         $this->debug = $debug;
-
-        // @todo Drupal 7 tainted
-        $this->limitDefault = (int)\variable_get('nodesearch_endpoint_limit_default', self::LIMIT_DEFAULT);
-        $this->limitMax = (int)\variable_get('nodesearch_endpoint_limit_max', self::LIMIT_MAX);
-        $this->publishedOnly = (bool)\variable_get('nodesearch_endpoint_published_only', $this->publishedOnly);
-        $this->wildcardPrefix = (bool)\variable_get('nodesearch_endpoint_prefix_wildcard_enable', $this->wildcardAllowPrefix);
+        $this->limitDefault = $limitDefault;
+        $this->limitMax = $limitMax;
+        $this->publishedOnly = $publishedOnly;
+        $this->wildcardPrefix = $wildcardPrefix;
     }
 
     /**
@@ -115,7 +112,7 @@ class NodeSearcher
         }
 
         // Create the query, the rest will flow along.
-        $select = \db_select('node', 'n');
+        $select = \db_select('node_field_data', 'n');
         $select->fields('n', ['nid', 'title', 'status', 'created', 'changed', 'type']);
         $select->addTag('node_access');
         // Allow other modules to compete with us (contextual filtering, etc...).
@@ -137,9 +134,9 @@ class NodeSearcher
         if ($rawSearchString = $query->getRawSearchString()) {
             // As of now, only title search is allowed
             if ($this->wildcardAllowPrefix) {
-                $select->condition('n.title', '%'.\db_like($rawSearchString).'%', 'like');
+                $select->condition('n.title', '%'.\db_like($rawSearchString).'%', 'LIKE');
             } else {
-                $select->condition('n.title', \db_like($rawSearchString).'%', 'like');
+                $select->condition('n.title', \db_like($rawSearchString).'%', 'LIKE');
             }
         }
 
@@ -173,7 +170,7 @@ class NodeSearcher
 
         if ($total) {
             $sortFieldReal = null;
-            $drupalSortOrder = $query->isSortAsc() ? 'asc' : 'desc';
+            $drupalSortOrder = Query::SORT_DESC !== $query->getSortOrder() ? 'asc' : 'desc';
 
             switch ($query->getSortField()) {
                 case 'title':

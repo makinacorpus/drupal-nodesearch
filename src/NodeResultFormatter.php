@@ -16,10 +16,10 @@ class NodeResultFormatter
     /**
      * Default constructor
      */
-    public function __construct(EntityManager $entityManager)
+    public function __construct(EntityManager $entityManager, bool $withImage = true)
     {
         $this->entityManager = $entityManager;
-        $this->withImage = (bool)variable_get('nodesearch_endpoint_add_image', $this->withImage);
+        $this->withImage = $withImage;
     }
 
     /**
@@ -46,18 +46,16 @@ class NodeResultFormatter
     /**
      * Build result array from node result row
      */
-    public function createResult($result) : array
+    public function createResult(NodeInterface $result) : array
     {
-        $types = \node_type_get_names();
-
         return [
-            'id'          => $result->nid,
-            'title'       => $result->title,
-            'status'      => $result->status,
-            'created'     => (new \DateTimeImmutable('@'.$result->created))->format(\DateTime::ISO8601),
-            'updated'     => (new \DateTimeImmutable('@'.$result->changed))->format(\DateTime::ISO8601),
-            'type'        => $result->type,
-            'human_type'  => $types[$result->type] ?? $result->type,
+            'id'          => $result->id(),
+            'title'       => (string)$result->getTitle(),
+            'status'      => (int)$result->isPublished(),
+            'created'     => (new \DateTimeImmutable('@'.$result->getCreatedTime()))->format(\DateTime::ISO8601),
+            'updated'     => (new \DateTimeImmutable('@'.$result->getChangedTime()))->format(\DateTime::ISO8601),
+            'type'        => $result->getEntityTypeId(),
+            'human_type'  => $result->getEntityType()->getBundleLabel(),
             'image'       => $this->withImage ? $this->findImage($result) : '',
         ];
     }
@@ -86,6 +84,8 @@ class NodeResultFormatter
      */
     private function findImageField(string $type) : array
     {
+        return [];
+
         $candidates = [];
 
         if ($config = \variable_get('nodesearch_preview_image_field')) {
@@ -118,6 +118,7 @@ class NodeResultFormatter
      */
     private function findImage($result) : string
     {
+        return '';
         $storage = $this->entityManager->getStorage('node');
         $style = \variable_get('nodesearch_preview_image_style', null) ?? $this->findImageStyle();
 

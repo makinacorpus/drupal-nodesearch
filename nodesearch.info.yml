@@ -1,0 +1,7 @@
+name: Node search
+type: module
+description: Node selector and search endpoint
+core: 8.x
+package: Utility
+php: 7
+dependencies: [sf_int]

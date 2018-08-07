@@ -1,0 +1,19 @@
+react:
+    version: VERSION
+    js:
+        "https://unpkg.com/react@16/umd/react.production.min.js": {}
+        "https://unpkg.com/react-dom@16/umd/react-dom.production.min.js": {}
+
+react-dev:
+    version: VERSION
+    js:
+        "https://unpkg.com/react@16/umd/react.development.js": {}
+        "https://unpkg.com/react-dom@16/umd/react-dom.development.js": {}
+
+nodesearch:
+    version: VERSION
+    js:
+        dist/nodesearch.js: {}
+    css:
+        component:
+            dist/nodesearch.css: {}
