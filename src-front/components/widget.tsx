@@ -199,7 +199,7 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 
             if (this.props.types && this.props.types.length) {
                 types = this.props.types;
-            } else if (this.state.result) { 
+            } else if (this.state.result) {
                 // Defaults to know types returned by the AJAX request
                 types = Object.keys(this.state.result.types_all);
             }
@@ -247,10 +247,10 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
                         />
                     </div>
                     <div className="footer">
-                        <button className="btn btn-danger" name="submit" onClick={this.onCancelClick}>
+                        <button className="button btn btn-danger" name="submit" onClick={this.onCancelClick}>
                             Cancel
                         </button>
-                        <button className="btn btn-success pull-right" name="submit" onClick={this.onCloseClick}>
+                        <button className="button btn btn-success pull-right" name="submit" onClick={this.onCloseClick}>
                             Select
                         </button>
                     </div>

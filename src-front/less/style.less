@@ -5,7 +5,7 @@
 @nodesearch-dialog-thumbnail-height: 3em;
 @nodesearch-dialog-thumbnail-border-color: #ccc;
 @nodesearch-dialog-active-border-color: red;
-@nodesearch-dialog-width: 801px;
+@nodesearch-dialog-width: 800px;
 @nodesearch-dialog-margin-top: 50px;
 @nodesearch-dialog-z-index: 2000;
 
@@ -34,6 +34,14 @@
 
 .node-selector-dialog {
 
+  // Few fixes for Drupal 8's seven theme.
+  * {
+    box-sizing: border-box;
+  }
+  input[type=button], button {
+    margin: 0;
+  }
+
   .overlay {
     position: fixed;
     top: 0;
@@ -55,7 +63,7 @@
     z-index: @nodesearch-dialog-z-index + 1;
     background: @nodesearch-dialog-background;
     box-shadow: @nodesearch-dialog-shadow;
-    padding: 1.5rem 2rem;
+    padding: 14px 20px;
     border-radius: 5px;
 
     @media (max-height: 760px) {
