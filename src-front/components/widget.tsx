@@ -66,15 +66,15 @@ export interface WidgetProps {
 interface WidgetState {
     dialogOpened?: boolean;
     result?: Result;
-    values: ResultItem[];
+    defaults: ResultItem[]; // Defaults before widget spawn
+    previous: ResultItem[]; // Value since last selection
+    values: ResultItem[]; // Current temporary values
 };
 
 /**
  * Selector widget, see WidgetProps documentation for options
  */
 export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
-
-    private readonly defaults: ResultItem[];
 
     constructor(props: WidgetProps) {
         super(props);
@@ -86,12 +86,16 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
             return item;
         });
 
-        this.state = {values};
-        this.defaults = values.concat([]); // Array copy
+        this.state = {
+            defaults: values.concat([]), // Array copy
+            previous: values.concat([]), // Array copy
+            values: values,
+        };
 
-        this.onCloseClick = this.onCloseClick.bind(this);
         this.onCancelClick = this.onCancelClick.bind(this);
+        this.onCloseClick = this.onCloseClick.bind(this);
         this.onOpenClick = this.onOpenClick.bind(this);
+        this.onResetClick = this.onResetClick.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
         this.typeFilter = this.typeFilter.bind(this);
         this.valueAdd = this.valueAdd.bind(this);
@@ -167,7 +171,10 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 
     private onCloseClick() {
         this.props.onUpdate(this.state.values);
-        this.setState({dialogOpened: false});
+        // Copy current values as being the previously accepted set
+        // of values, so that cancel will restore that instead of
+        // restoring defaults.
+        this.setState({dialogOpened: false, previous: this.state.values.concat([])});
     }
 
     private onOpenClick(event: React.MouseEvent<HTMLButtonElement>) {
@@ -178,8 +185,15 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 
     private onCancelClick(event: React.MouseEvent<HTMLButtonElement>) {
         event.preventDefault();
-        this.props.onUpdate(this.defaults); // Restore defaults
-        this.setState({dialogOpened: false, values: this.defaults});
+        this.props.onUpdate(this.state.previous); // Restore defaults
+        this.setState({dialogOpened: false, values: this.state.previous});
+        this.refresh();
+    }
+
+    private onResetClick(event: React.MouseEvent<HTMLButtonElement>) {
+        event.preventDefault();
+        this.props.onUpdate(this.state.defaults); // Restore defaults
+        this.setState({dialogOpened: false, values: this.state.defaults});
         this.refresh();
     }
 
@@ -204,7 +218,7 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
                 types = Object.keys(this.state.result.types_all);
             }
 
-            if (types.length) {
+            if (1 < types.length) {
                 for (let bundle of types) {
                     let label = bundle;
                     let checked = false;
@@ -225,9 +239,7 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
                         type="text"
                         value={searchValue}
                     />
-                    <div className="filter">
-                        {checkboxes}
-                    </div>
+                    {checkboxes.length ? <div className="filter">{checkboxes}</div> : ''}
                     <ResultPreviewList
                         active={active}
                         data={result}
@@ -249,6 +261,9 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
                     <div className="footer">
                         <button className="button btn btn-danger" name="submit" onClick={this.onCancelClick}>
                             Cancel
+                        </button>
+                        <button className="button btn btn-danger" name="submit" onClick={this.onResetClick}>
+                            Reset to defaults
                         </button>
                         <button className="button btn btn-success pull-right" name="submit" onClick={this.onCloseClick}>
                             Select
