@@ -4,7 +4,7 @@
     "main": "src/index.js",
     "repository": "http://github.com/makinacorpus/drupal-nodesearch",
     "author": "Pierre Rineau",
-    "license": "MIT",
+    "license": "GPL-2.0-or-later",
     "scripts": {
         "start": "webpack --mode=development --watch",
         "build": "webpack --mode=production --progress"
