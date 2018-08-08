@@ -44,9 +44,12 @@ class NodeSearch extends FormElement
             // Element will work with multiple input.
             '#multiple' => false,
             '#input' => true,
-            '#attached' => ['library' => ['nodesearch/react-dev', 'nodesearch/nodesearch']],
-            // For internal use only, transparently handle ['nid' => int] values.
-            '#field_api' => false,
+            '#attached' => [
+                'library' => [
+                    'nodesearch/react-dev',
+                    'nodesearch/nodesearch',
+                ]
+            ],
         ];
     }
 
@@ -59,20 +62,12 @@ class NodeSearch extends FormElement
 
         if ($input) {
             $values = \array_filter(\array_unique(\explode(',', $input['values'])));
-        } else if ($element['#default_value']) {
+        } else if (!empty($element['#default_value'])) {
             if (\is_array($element['#default_value'])) {
                 $values = $element['#default_value'];
             } else {
                 $values = [$element['#default_value']];
             }
-        }
-
-        // Handle field API transparently.
-        if ($element['#field_api']) {
-            // This also handles the fact that we may, for some unknown reason, pass
-            // in here more than once, values could end up be ['nid' =>  ['nid => int]]
-            // and we sure don't want that.
-            return \array_map(function ($value) { return \is_array($value) ? $value : ['nid' => $value]; }, $values);
         }
 
         return $values;
@@ -137,10 +132,7 @@ class NodeSearch extends FormElement
     {
         $values = [];
 
-        // Transparently accept ['nid' => int] arrays for field API to be happy.
-        if ($element['#field_api']) {
-            $values = \array_map(function ($item) { return $item['nid']; }, $element['#value']);
-        } else if (!empty($element['#value'])) {
+        if (!empty($element['#value'])) {
             // Normalize input depending on the widget being multiple or not.
             if (\is_array($element['#value'])) {
                 // We have a problem here, the element do not allow more than one value
