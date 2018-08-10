@@ -137,7 +137,7 @@ export class ResultPreviewList extends React.Component<ResultPreviewListProps> {
 
         const placeholders = [];
         if (this.props.maxItemCount) {
-            for (let i = this.props.data.length; i < this.props.maxItemCount; ++i) {
+            for (let i = this.props.data.length; i < Math.min(this.props.maxItemCount, 6); ++i) {
                 placeholders.push("placeholder-" + i);
             }
         }

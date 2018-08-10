@@ -165,6 +165,13 @@ class NodeSearch extends FormElement
             $bundles = $element['#bundles'] = [$element['#bundles']];
         }
 
+        if (!$max && !$multiple) { // Not multiple item means max is 1.
+          $max = 1;
+        }
+        if (!$min && $required) { // Required item means min is at least 1.
+          $min = 1;
+        }
+
         // Default minimum value normalisation.
         if ($min < 0) {
             if ($required) {
