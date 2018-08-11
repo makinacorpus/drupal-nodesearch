@@ -16,10 +16,11 @@ class EndpointController
         $formatter = \Drupal::service('nodesearch_result_formatter');
 
         $inputDef = $searcher->createInputDefinition();
-        $ret = $searcher->find($inputDef->createQueryFromRequest($request));
+        $query = $inputDef->createQueryFromRequest($request);
+        $ret = $searcher->find($query);
 
         if ($ret['result']) {
-            $ret['result'] = $formatter->createResultAll($ret['result']);
+            $ret['result'] = $formatter->createResultAll($query->get('entity', 'node'), $ret['result']);
         }
 
         return new JsonResponse($ret);

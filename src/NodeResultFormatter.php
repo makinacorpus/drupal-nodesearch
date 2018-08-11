@@ -2,7 +2,9 @@
 
 namespace MakinaCorpus\Drupal\NodeSearch;
 
-use Drupal\Core\Entity\EntityManager;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeManager;
+use Drupal\media\MediaInterface;
 use Drupal\node\NodeInterface;
 
 /**
@@ -10,22 +12,22 @@ use Drupal\node\NodeInterface;
  */
 class NodeResultFormatter
 {
-    private $entityManager;
+    private $entityTypeManager;
     private $withImage = true;
 
     /**
      * Default constructor
      */
-    public function __construct(EntityManager $entityManager, bool $withImage = true)
+    public function __construct(EntityTypeManager $entityTypeManager, bool $withImage = true)
     {
-        $this->entityManager = $entityManager;
+        $this->entityTypeManager = $entityTypeManager;
         $this->withImage = $withImage;
     }
 
     /**
      * Create result for all given result row
      */
-    public function createResultAll(array $results, bool $alreadyLoaded = false) : array
+    public function createResultAll(string $entityType, array $results, bool $alreadyLoaded = false) : array
     {
         if (!$results) {
             return [];
@@ -35,18 +37,18 @@ class NodeResultFormatter
             if (!$idList = \array_map(function ($row) { return $row->nid; }, $results)) {
                 return [];
             }
-            if (!$results = $this->entityManager->getStorage('node')->loadMultiple($idList)) {
+            if (!$results = $this->entityTypeManager->getStorage($entityType)->loadMultiple($idList)) {
                 return [];
             }
         }
 
-        return \array_values(\array_map(function ($node) { return $this->createResult($node); }, $results));
+        return \array_values(\array_map(function ($entity) { return $this->createResult($entity); }, $results));
     }
 
     /**
-     * Build result array from node result row
+     * Build result for node.
      */
-    public function createResult(NodeInterface $result) : array
+    private function createResultForNode(NodeInterface $result): array
     {
         return [
             'id'          => $result->id(),
@@ -58,6 +60,38 @@ class NodeResultFormatter
             'human_type'  => $result->getEntityType()->getBundleLabel(),
             'image'       => $this->withImage ? $this->findImage($result) : '',
         ];
+    }
+
+    /**
+     * Build result for media.
+     */
+    private function createResultForMedia(MediaInterface $result): array
+    {
+        return [
+            'id'          => $result->id(),
+            'title'       => (string)$result->getName(),
+            'status'      => (int)$result->isPublished(),
+            'created'     => (new \DateTimeImmutable('@'.$result->getCreatedTime()))->format(\DateTime::ISO8601),
+            'updated'     => (new \DateTimeImmutable('@'.$result->getChangedTime()))->format(\DateTime::ISO8601),
+            'type'        => $result->getEntityTypeId(),
+            'human_type'  => $result->getEntityType()->getBundleLabel(),
+            'image'       => \file_create_url($result->getSource()->getMetadata($result, 'thumbnail_uri')),
+        ];
+    }
+
+    /**
+     * Build result array from node result row
+     */
+    public function createResult(EntityInterface $result) : array
+    {
+        if ($result instanceof NodeInterface) {
+            return $this->createResultForNode($result);
+        }
+        if ($result instanceof MediaInterface) {
+            return $this->createResultForMedia($result);
+        }
+
+        throw new \InvalidArgumentException(sprintf("only supports 'node' and 'media'"));
     }
 
     /**

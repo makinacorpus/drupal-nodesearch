@@ -30,7 +30,9 @@ class NodeSearch extends FormElement
             '#element_validate' => [
                 [static::class, 'validateNodeSearch'],
             ],
-            // Allowed node types (if empty all content type are allowed)
+            // Entity type (defaults to node)
+            '#entity_type' => 'node',
+            // Allowed bundles (if empty all content type are allowed)
             '#bundles' => [],
             // Will be the selection dialog title.
             '#title' => null,
@@ -210,13 +212,14 @@ class NodeSearch extends FormElement
             // Validate input by loading all the nodes. If there are duplicates,
             // ordering will probably be broken using this array_unique() call.
             $values = \array_unique($values);
+            // @todo replace with entity manager
             $nodes  = \node_load_multiple($values);
             if (\count($nodes) !== \count($values)) {
                 \trigger_error("nodesearch widget contains one or more node that don't exist", E_USER_NOTICE);
             }
             /** @var \MakinaCorpus\Drupal\NodeSearch\NodeResultFormatter $formatter */
             $formatter = \Drupal::service('nodesearch_result_formatter');
-            $output = $formatter->createResultAll($nodes, true);
+            $output = $formatter->createResultAll($element['#entity_type'], 'node', $nodes, true);
             // In all cases, normalize values input (ordering is kept here).
             $values = \array_keys($nodes);
         }

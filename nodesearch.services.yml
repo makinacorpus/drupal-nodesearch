@@ -16,6 +16,7 @@ services:
     nodesearch_node_searcher:
         class: MakinaCorpus\Drupal\NodeSearch\NodeSearcher
         arguments:
+            - "@entity_type.manager"
             - "%nodesearch_endpoint_limit_default%"
             - "%nodesearch_endpoint_limit_max%"
             - "%nodesearch_endpoint_published_only%"
@@ -24,4 +25,4 @@ services:
 
     nodesearch_result_formatter:
         class: MakinaCorpus\Drupal\NodeSearch\NodeResultFormatter
-        arguments: ["@entity.manager", "%nodesearch_endpoint_add_image%"]
+        arguments: ["@entity_type.manager", "%nodesearch_endpoint_add_image%"]
