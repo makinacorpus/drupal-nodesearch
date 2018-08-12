@@ -63,7 +63,7 @@ class NodeSearch extends FormElement
         $values = [];
 
         if ($input) {
-            $values = \array_filter(\array_unique(\explode(',', $input['values'])));
+            $values = \array_filter(\explode(',', $input['values']));
         } else if (!empty($element['#default_value'])) {
             if (\is_array($element['#default_value'])) {
                 $values = $element['#default_value'];
@@ -103,8 +103,11 @@ class NodeSearch extends FormElement
 
         // Ensure all nodes exist and have the right bundle.
         if ($value) {
-            $nodes = \node_load_multiple($value);
-            if (\count($nodes) !== $count) {
+            // Handle duplicates (this is valid to have duplicates).
+            $idList = \array_unique($value);
+            $entities  = \Drupal::entityTypeManager()->getStorage($element['#entity_type'])->loadMultiple($idList);
+
+            if (\count($entities) !== count($idList)) {
                 $form_state->setError($element, new TranslatableMarkup("%name contains one or more non existing nodes.", ['%name' => $element['#title']]));
             }
 
@@ -115,11 +118,11 @@ class NodeSearch extends FormElement
                     $bundles = [$element['#bundles']];
                 }
 
-                foreach ($nodes as $node) {
-                    if (!in_array($node->type, $bundles)) {
+                foreach ($entities as $entity) {
+                    if (!in_array($entity->bundle(), $bundles)) {
                         $form_state->setError($element, new TranslatableMarkup("%name's %title does not have an allowed node type.", [
                             '%name' => $element['#title'],
-                            '%title' => $node->title,
+                            '%title' => $entity->label(),
                         ]));
                     }
                 }
@@ -189,7 +192,7 @@ class NodeSearch extends FormElement
         }
 
         // Default max value normalisation.
-        if ($max < $min) {
+        if ($max && $max < $min) {
             \trigger_error(\sprintf("nodesearch widget min value %d is higher than max value %d, falling back to %d", $min, $max, NODESEARCH_ELEMENT_DEFAULT_MAX), E_USER_WARNING);
             // Ensure that we are always higher or equal than min.
             $max = \max([$min, NODESEARCH_ELEMENT_DEFAULT_MAX]);
@@ -209,23 +212,28 @@ class NodeSearch extends FormElement
         $element['#max'] = $max;
 
         if ($values = self::normalizeValues($element)) {
-            // Validate input by loading all the nodes. If there are duplicates,
-            // ordering will probably be broken using this array_unique() call.
-            $values = \array_unique($values);
-            // @todo replace with entity manager
-            $nodes  = \node_load_multiple($values);
-            if (\count($nodes) !== \count($values)) {
+            $entityType = $element['#entity_type'];
+
+            // Validate input by loading all the entities. Work on a copy of
+            // the values so that we can keep duplicates entries in the final
+            // widget.
+            $idList = \array_unique($values);
+
+            $entities  = \Drupal::entityTypeManager()->getStorage($entityType)->loadMultiple($idList);
+            if (\count($entities) !== \count($idList)) {
                 \trigger_error("nodesearch widget contains one or more node that don't exist", E_USER_NOTICE);
             }
+
             /** @var \MakinaCorpus\Drupal\NodeSearch\NodeResultFormatter $formatter */
             $formatter = \Drupal::service('nodesearch_result_formatter');
-            $output = $formatter->createResultAll($element['#entity_type'], 'node', $nodes, true);
+            $output = $formatter->createResultAll($entityType, $entities, true);
+
             // In all cases, normalize values input (ordering is kept here).
-            $values = \array_keys($nodes);
+            $idList = \array_keys($entities);
         }
 
         // Ensure that number of nodes is in adequation with min and max values.
-        if ($max < \count($values)) {
+        if ($max && $max < \count($values)) {
             \trigger_error(\sprintf("nodesearch widget contains %d nodes whereas max count is %d, validation will fail", count($values), $max), E_USER_NOTICE);
         }
 
@@ -235,6 +243,7 @@ class NodeSearch extends FormElement
             '#default_value' => \implode(',', $values),
             '#attributes'    => [
                 'data-nodesearch'   => "true",
+                'data-entity'       => $element['#entity_type'],
                 'data-title'        => $element['#title'] ?? '',
                 'data-placeholder'  => $element['#placeholder'] ?? '',
                 'data-default'      => \json_encode($output),

@@ -2,10 +2,11 @@
 
 namespace MakinaCorpus\Drupal\NodeSearch;
 
+use Drupal\Core\Entity\EntityTypeManager;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+use MakinaCorpus\Calista\Query\Filter;
 use MakinaCorpus\Calista\Query\InputDefinition;
 use MakinaCorpus\Calista\Query\Query;
-use MakinaCorpus\Calista\Query\Filter;
-use Drupal\Core\Entity\EntityTypeManager;
 
 class NodeSearcher
 {
@@ -60,14 +61,34 @@ class NodeSearcher
      *   Keys are node bundles, values are human readable names.
      *   Site-wide blacklisted node types will be excluded from this result.
      */
-    private function getAllowedNodeTypes(): array
+    private function getAllowedNodeTypes(string $entityType): array
     {
-        // @todo use the entity type manager directly
-        $types = node_type_get_names();
+        $types = [];
 
-        // Filter out site-wide black listed content types.
-        if ($blacklisted = [] /* variable_get('nodesearch_endpoint_node_type_blacklist', []) */) {
-            $types = \array_diff_key($types, \array_flip($blacklisted));
+        // @todo make this more dynamic:
+        //   - blacklist in conf per entity type
+        //   - defaults to all bundles of the entity type (drupal api
+        //     is terrible I didn't manage to achieve that)
+        switch ($entityType) {
+
+            case 'node':
+                // @todo use the entity type manager directly
+                $types = node_type_get_names();
+
+                // Filter out site-wide black listed content types.
+                if ($blacklisted = [] /* variable_get('nodesearch_endpoint_node_type_blacklist', []) */) {
+                    $types = \array_diff_key($types, \array_flip($blacklisted));
+                }
+                break;
+
+            case 'media':
+                // @todo Unhardcode this.
+                $types = [
+                    'image' => new TranslatableMarkup("Image"),
+                    'remote_video' => new TranslatableMarkup("Remote video"),
+                    'video' => new TranslatableMarkup("Video"),
+                ];
+                break;
         }
 
         return $types;
@@ -78,14 +99,15 @@ class NodeSearcher
      */
     public function createInputDefinition() : InputDefinition
     {
-        $allowedNodeTypes = $this->getAllowedNodeTypes();
+        // @todo fix this
+        //$allowedNodeTypes = $this->getAllowedNodeTypes();
 
         return new InputDefinition([
-            'base_query'          => ['type' => \array_keys($allowedNodeTypes)],
+            'base_query'          => [],// ['type' => \array_keys($allowedNodeTypes)],
             'filter_list'         => [
                 (new Filter('status'))->setChoicesMap([1 => 'Published', 0 => 'Unpublished']),
                 (new Filter('entity'))->setChoicesMap(['node', 'media']),
-                (new Filter('type'))->setChoicesMap($allowedNodeTypes),
+                (new Filter('type')), //->setChoicesMap($allowedNodeTypes),
                 (new Filter('user_created'))->setChoicesMap([1 => 'Yes', 0 => 'All']),
                 (new Filter('user_touched'))->setChoicesMap([1 => 'Yes', 0 => 'All']),
             ],
@@ -112,13 +134,13 @@ class NodeSearcher
     public function find(Query $query): array
     {
         $userId = $query->get('user_id');
+        $entityType = $query->get('entity', 'node');
 
         // Without any types configured, this serves no purpose
-        if (!$allowedTypes = $this->getAllowedNodeTypes()) {
+        if (!$allowedTypes = $this->getAllowedNodeTypes($entityType)) {
             return [];
         }
 
-        $entityType = $query->get('entity', 'node');
         $entityTypeDef = $this->entityTypeManager->getDefinition($entityType);
         $entityKeys = $entityTypeDef->getKeys();
         $bundleColumn = $entityKeys['bundle'];
@@ -139,13 +161,11 @@ class NodeSearcher
         $select->addTag('nodesearch');
 
         $types = [];
-        /*
         if ($query->has('type') && ($types = $query->get('type'))) {
-            $select->condition('n.'.$bundleColumn, $types, 'IN');
+            $select->condition('n.'.$bundleColumn, (array)$types, 'IN');
         } else {
             $select->condition('n.'.$bundleColumn, \array_keys($allowedTypes), 'IN');
         }
-         */
 
         if ($query->has('status')) {
             $select->condition('n.status', (int)(bool)$query->get('status'));

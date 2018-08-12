@@ -34,16 +34,17 @@ final class NodeSearchWidget extends WidgetBase
         $settings = $this->getFieldSetting('handler_settings');
         $cardinality = $definition->getFieldStorageDefinition()->getCardinality();
         $max = FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED == $cardinality ? null : $cardinality;
-        $required = $max && 1 < $max;
+        $multiple = !$max || 1 < $max;
 
         $element['nodes'] = [
             '#type' => 'nodesearch',
             '#bundles' => $settings['target_bundles'] ?? [],
+            '#entity_type' => $definition->getSetting('target_type'),
             '#title' => $definition->getLabel(),
             // '#placeholder' => null,
             '#max' => $max,
             '#min' => $definition->isRequired() ? 1 : 0,
-            '#multiple' => $required,
+            '#multiple' => $multiple,
             '#default_value' => \array_column($items->getValue(), 'target_id'),
         ];
 
@@ -69,6 +70,11 @@ final class NodeSearchWidget extends WidgetBase
      */
     public static function isApplicable(FieldDefinitionInterface $field_definition)
     {
-        return parent::isApplicable($field_definition) && 'node' === $field_definition->getSetting('target_type');
+        $entityType = $field_definition->getSetting('target_type');
+
+        return parent::isApplicable($field_definition) && (
+            'node' === $entityType ||
+            'media' === $entityType
+        );
     }
 }

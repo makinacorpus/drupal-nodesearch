@@ -1,7 +1,10 @@
 
+export const DEFAULT_ENTITY = 'node';
+
 export interface Search {
     page?: number;
     limit?: number;
+    entity?: string;
     search?: string;
     sort_field?: string;
     sort_order?: string;
@@ -60,6 +63,7 @@ export function doSearch(search: Search): Promise<Result> {
     return new Promise<Result>((resolve: (result: Result) => void, reject: (err: any) => void) => {
 
         const parameters: string[] = [];
+        parameters.push(encodeComponent('entity', search.entity || DEFAULT_ENTITY));
         if (search.page) {
             parameters.push(encodeComponent('page', search.page));
         }

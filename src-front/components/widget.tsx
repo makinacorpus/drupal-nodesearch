@@ -24,6 +24,11 @@ export interface WidgetProps {
     readonly title?: string;
 
     /**
+     * Entity type to query
+     */
+    readonly entityType: string;
+
+    /**
      * Open dialog button title
      */
     readonly buttonTitle?: string;
@@ -108,6 +113,7 @@ export class SelectorWidget extends React.Component<WidgetProps, WidgetState> {
 
     private refresh(search?: Search) {
         search = search || {};
+        search.entity = this.props.entityType;
         // Do not loose the current filters, only override.
         search.limit = search.limit || this.props.limit || WIDGET_DEFAULT_LIMIT;
         search.types = search.types || this.props.types;
@@ -328,11 +334,12 @@ export function SelectorWidgetInit(target: HTMLInputElement) {
     }
 
     const props = {
-        title: target.getAttribute("title") ||target.getAttribute("data-title") || "",
+        title: target.getAttribute("title") || target.getAttribute("data-title") || "",
+        entityType: target.getAttribute("data-entity") || "node",
         values: defaults,
         placeholder: target.getAttribute("placeholder") || target.getAttribute("data-placeholder") || "",
         minCount: parseInt(target.getAttribute("data-min") || "") || 0,
-        maxCount: parseInt(target.getAttribute("data-max") || "") || 1,
+        maxCount: parseInt(target.getAttribute("data-max") || "") || 0,
         types: (target.getAttribute("data-bundle") || "").split(",").map(value => value.trim()).filter((value) => value.length),
         // Restore values into the hidden widget, that will be really POST'ed.
         onUpdate: (values: ResultItem[]) => target.value = values.map(item => item.id).join(","),
