@@ -2,8 +2,8 @@
 
 namespace MakinaCorpus\Drupal\NodeSearch;
 
-use Drupal\Core\Entity\EntityTypeManager;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use MakinaCorpus\Calista\Query\Filter;
 use MakinaCorpus\Calista\Query\InputDefinition;
 use MakinaCorpus\Calista\Query\Query;
@@ -29,6 +29,7 @@ class NodeSearcher
     }
 
     private $debug = false;
+    private $entityBundleInfo;
     private $entityTypeManager;
     private $limitDefault = 12;
     private $limitMax = 100;
@@ -39,7 +40,8 @@ class NodeSearcher
      * Default constructor
      */
     public function __construct(
-        EntityTypeManager $entityTypeManager,
+        EntityTypeManagerInterface $entityTypeManager,
+        EntityTypeBundleInfoInterface $entityBundleInfo,
         int $limitDefault = 12,
         int $limitMax = 100,
         bool $publishedOnly = true,
@@ -47,6 +49,7 @@ class NodeSearcher
         bool $debug = true
     ) {
         $this->debug = $debug;
+        $this->entityBundleInfo = $entityBundleInfo;
         $this->entityTypeManager = $entityTypeManager;
         $this->limitDefault = $limitDefault;
         $this->limitMax = $limitMax;
@@ -63,35 +66,14 @@ class NodeSearcher
      */
     private function getAllowedNodeTypes(string $entityType): array
     {
-        $types = [];
+        $bundleInfo = $this->entityBundleInfo->getBundleInfo($entityType);
 
-        // @todo make this more dynamic:
-        //   - blacklist in conf per entity type
-        //   - defaults to all bundles of the entity type (drupal api
-        //     is terrible I didn't manage to achieve that)
-        switch ($entityType) {
-
-            case 'node':
-                // @todo use the entity type manager directly
-                $types = node_type_get_names();
-
-                // Filter out site-wide black listed content types.
-                if ($blacklisted = [] /* variable_get('nodesearch_endpoint_node_type_blacklist', []) */) {
-                    $types = \array_diff_key($types, \array_flip($blacklisted));
-                }
-                break;
-
-            case 'media':
-                // @todo Unhardcode this.
-                $types = [
-                    'image' => new TranslatableMarkup("Image"),
-                    'remote_video' => new TranslatableMarkup("Remote video"),
-                    'video' => new TranslatableMarkup("Video"),
-                ];
-                break;
+        $blacklisted = [];
+        if ($blacklisted) {
+            $bundleInfo = \array_diff_key($bundleInfo, \array_flip($blacklisted));
         }
 
-        return $types;
+        return \array_map(function ($info) { return $info['label']; }, $bundleInfo);
     }
 
     /**
