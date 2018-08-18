@@ -224,9 +224,9 @@ class NodeSearch extends FormElement
                 \trigger_error("nodesearch widget contains one or more node that don't exist", E_USER_NOTICE);
             }
 
-            /** @var \MakinaCorpus\Drupal\NodeSearch\NodeResultFormatter $formatter */
-            $formatter = \Drupal::service('nodesearch_result_formatter');
-            $output = $formatter->createResultAll($entityType, $entities, true);
+            /** @var \MakinaCorpus\Drupal\NodeSearch\NodeSearcher $searcher */
+            $searcher = \Drupal::service('nodesearch_node_searcher');
+            $output = $searcher->createResultAll($entityType, $entities, true);
 
             // In all cases, normalize values input (ordering is kept here).
             $idList = \array_keys($entities);

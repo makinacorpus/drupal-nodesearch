@@ -1,6 +1,5 @@
 parameters:
     nodesearch_dev_mode: true # "%kernel.debug%"
-    nodesearch_endpoint_add_image: true
     nodesearch_endpoint_limit_default: 12
     nodesearch_endpoint_limit_max: 100
     nodesearch_endpoint_node_type_blacklist: []
@@ -8,22 +7,31 @@ parameters:
     nodesearch_endpoint_published_only: true
     nodesearch_react_enable: true
 
-    # nodesearch_preview_image_field: ~
-    # nodesearch_preview_image_style: ~
-
 services:
 
+    nodesearch_entity_handler:
+        public: false
+        class: MakinaCorpus\Drupal\NodeSearch\Handler\AggregateHandler
+        arguments: [[]]
+
+    nodesearch_entity_handler_default:
+        # I have no idea why, but it seems that Drupal doesn't like tagged
+        # services to be private...
+        # @todo open core issue
+        # public: false
+        class: MakinaCorpus\Drupal\NodeSearch\Handler\DefaultHandler
+        arguments: ["@image.factory"]
+        tags: [{name: nodesearch_entity_handler}]
+
     nodesearch_node_searcher:
+        public: true # For controller and form element
         class: MakinaCorpus\Drupal\NodeSearch\NodeSearcher
         arguments:
             - "@entity_type.manager"
             - "@entity_type.bundle.info"
+            - "@nodesearch_entity_handler"
             - "%nodesearch_endpoint_limit_default%"
             - "%nodesearch_endpoint_limit_max%"
             - "%nodesearch_endpoint_published_only%"
             - "%nodesearch_endpoint_prefix_wildcard_enable%"
             - "%nodesearch_dev_mode%"
-
-    nodesearch_result_formatter:
-        class: MakinaCorpus\Drupal\NodeSearch\NodeResultFormatter
-        arguments: ["@entity_type.manager", "%nodesearch_endpoint_add_image%"]

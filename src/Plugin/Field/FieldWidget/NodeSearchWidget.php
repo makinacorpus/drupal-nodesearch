@@ -70,6 +70,9 @@ final class NodeSearchWidget extends WidgetBase
      */
     public static function isApplicable(FieldDefinitionInterface $field_definition)
     {
+        return parent::isApplicable($field_definition);
+
+        // @todo restore this using the entity handler
         $entityType = $field_definition->getSetting('target_type');
 
         return parent::isApplicable($field_definition) && (

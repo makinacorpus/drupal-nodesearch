@@ -2,6 +2,9 @@
 
 namespace MakinaCorpus\Drupal\NodeSearch;
 
+use Drupal\Core\Entity\EntityChangedInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityPublishedInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use MakinaCorpus\Calista\Query\Filter;
@@ -31,6 +34,7 @@ class NodeSearcher
     private $debug = false;
     private $entityBundleInfo;
     private $entityTypeManager;
+    private $handler;
     private $limitDefault = 12;
     private $limitMax = 100;
     private $publishedOnly = true;
@@ -42,6 +46,7 @@ class NodeSearcher
     public function __construct(
         EntityTypeManagerInterface $entityTypeManager,
         EntityTypeBundleInfoInterface $entityBundleInfo,
+        EntityHandlerInterface $handler,
         int $limitDefault = 12,
         int $limitMax = 100,
         bool $publishedOnly = true,
@@ -51,6 +56,7 @@ class NodeSearcher
         $this->debug = $debug;
         $this->entityBundleInfo = $entityBundleInfo;
         $this->entityTypeManager = $entityTypeManager;
+        $this->handler = $handler;
         $this->limitDefault = $limitDefault;
         $this->limitMax = $limitMax;
         $this->publishedOnly = $publishedOnly;
@@ -64,7 +70,7 @@ class NodeSearcher
      *   Keys are node bundles, values are human readable names.
      *   Site-wide blacklisted node types will be excluded from this result.
      */
-    private function getAllowedNodeTypes(string $entityType): array
+    private function getAllowedBundles(string $entityType): array
     {
         $bundleInfo = $this->entityBundleInfo->getBundleInfo($entityType);
 
@@ -83,12 +89,11 @@ class NodeSearcher
     {
         // @todo fix this
         //$allowedNodeTypes = $this->getAllowedNodeTypes();
-
         return new InputDefinition([
             'base_query'          => [],// ['type' => \array_keys($allowedNodeTypes)],
             'filter_list'         => [
                 (new Filter('status'))->setChoicesMap([1 => 'Published', 0 => 'Unpublished']),
-                (new Filter('entity'))->setChoicesMap(['node', 'media']),
+                (new Filter('entity'))->setChoicesMap($this->handler->getSupportedTypes()),
                 (new Filter('type')), //->setChoicesMap($allowedNodeTypes),
                 (new Filter('user_created'))->setChoicesMap([1 => 'Yes', 0 => 'All']),
                 (new Filter('user_touched'))->setChoicesMap([1 => 'Yes', 0 => 'All']),
@@ -111,6 +116,59 @@ class NodeSearcher
     }
 
     /**
+     * Create result for all given result row
+     */
+    public function createResultAll(string $entityType, array $results, bool $alreadyLoaded = false): array
+    {
+        if (!$results) {
+            return [];
+        }
+
+        if (!$alreadyLoaded) {
+            if (!$idList = \array_map(function ($row) { return $row->nid; }, $results)) {
+                return [];
+            }
+            if (!$results = $this->entityTypeManager->getStorage($entityType)->loadMultiple($idList)) {
+                return [];
+            }
+        }
+
+        return \array_values(\array_map(function ($entity) { return $this->createResult($entity); }, $results));
+    }
+
+    /**
+     * Build result array from node result row
+     */
+    public function createResult(EntityInterface $result): array
+    {
+        $entityType = $result->getEntityTypeId();
+
+        $ret = [
+            'id'          => $result->id(),
+            'title'       => (string)$result->label(),
+            'status'      => 1,
+            'created'     => null,
+            'updated'     => null,
+            'type'        => $entityType,
+            'human_type'  => $result->getEntityType()->getBundleLabel(),
+            'image'       => $this->handler->findImage($entityType, $result),
+        ];
+
+        if ($result instanceof EntityPublishedInterface) {
+            $ret['status'] = (int)$result->isPublished();
+        }
+        if ($result instanceof EntityChangedInterface) {
+           $ret['updated'] = (new \DateTimeImmutable('@'.$result->getChangedTime()))->format(\DateTime::ISO8601);
+        }
+        // @todo awaiting for a core generic interface for this
+        if (\method_exists($result, 'getCreatedTime')) {
+            $ret['created'] = (new \DateTimeImmutable('@'.$result->getCreatedTime()))->format(\DateTime::ISO8601);
+        }
+
+        return $ret;
+    }
+
+    /**
      * Query database for content, returns the JSON response as array.
      */
     public function find(Query $query): array
@@ -119,7 +177,7 @@ class NodeSearcher
         $entityType = $query->get('entity', 'node');
 
         // Without any types configured, this serves no purpose
-        if (!$allowedTypes = $this->getAllowedNodeTypes($entityType)) {
+        if (!$allowedTypes = $this->getAllowedBundles($entityType)) {
             return [];
         }
 
@@ -164,15 +222,6 @@ class NodeSearcher
             }
         }
 
-        // Order by view history
-        if ('node' === $entityType) {
-            if ($userId) {
-                $select->leftJoin('history', 'h', "h.nid = n.nid AND h.uid = :history_uid", [':history_uid' => $userId]);
-            } else {
-                $select->leftJoin('history', 'h', "h.nid = n.nid AND 1 = 0");
-            }
-        }
-
         // Allow a boolean field "my content only".
         if ($userId) {
             if ($query->get('user_touched')) {
@@ -198,6 +247,8 @@ class NodeSearcher
             $sortFieldReal = null;
             $drupalSortOrder = Query::SORT_DESC !== $query->getSortOrder() ? 'asc' : 'desc';
 
+            // @todo be aware that some entity types don't have those fields
+            //    this code should probably moved to the entity handler instead
             switch ($query->getSortField()) {
                 case 'title':
                     $sortFieldReal = 'n.'.$nameCol;
