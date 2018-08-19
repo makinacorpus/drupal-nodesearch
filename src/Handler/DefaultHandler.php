@@ -65,6 +65,7 @@ class DefaultHandler implements EntityHandlerInterface
             } else {
                 $select->leftJoin('history', 'h', "h.nid = n.nid AND 1 = 0");
             }
+            $select->addTag('node_access');
         }
     }
 }

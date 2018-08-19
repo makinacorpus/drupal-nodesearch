@@ -14,8 +14,6 @@ use Drupal\Core\StringTranslation\TranslatableMarkup;
  */
 class NodeSearch extends FormElement
 {
-    const DEFAULT_MAX = 1000;
-
     /**
      * {@inheritdoc}
      */
@@ -40,7 +38,7 @@ class NodeSearch extends FormElement
             '#placeholder' => null,
             // If element is multiple, set this to any number higher than 0. If you
             // set 1 here, element will fallback on NOT being multiple anyway.
-            '#max' => self::DEFAULT_MAX,
+            '#max' => 0,
             // Will fallback to 1 if element is required.
             '#min' => 0,
             // Element will work with multiple input.
@@ -128,6 +126,11 @@ class NodeSearch extends FormElement
                 }
             }
         }
+
+        // Seriously, fuck you Drupal. I don't understand this has to be done
+        // explicitely whereas the valueCallback return should be all of it...
+        $form_state->setValueForElement($element['values'], null);
+        $form_state->setValueForElement($element, $value);
     }
 
     /**
@@ -193,9 +196,9 @@ class NodeSearch extends FormElement
 
         // Default max value normalisation.
         if ($max && $max < $min) {
-            \trigger_error(\sprintf("nodesearch widget min value %d is higher than max value %d, falling back to %d", $min, $max, NODESEARCH_ELEMENT_DEFAULT_MAX), E_USER_WARNING);
+            \trigger_error(\sprintf("nodesearch widget min value %d is higher than max value %d, falling back to %d", $min, $max, $min), E_USER_WARNING);
             // Ensure that we are always higher or equal than min.
-            $max = \max([$min, NODESEARCH_ELEMENT_DEFAULT_MAX]);
+            $max = $min;
         }
         if ($max === 1 && $multiple) {
             \trigger_error(\sprintf("nodesearch widget max value %d is higher than 1, but value is single, falling back to being multiple", $min), E_USER_WARNING);

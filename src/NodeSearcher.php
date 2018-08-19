@@ -186,26 +186,30 @@ class NodeSearcher
         $bundleColumn = $entityKeys['bundle'];
         $idCol = $entityKeys['id'];
         $nameCol = $entityKeys['label'];
-        $baseTable = $entityTypeDef->getDataTable();
+        // Some entities won't have a data table.
+        if (!$baseTable = $entityTypeDef->getDataTable()) {
+            $baseTable = $entityTypeDef->getBaseTable();
+        }
 
         // Create the query, the rest will flow along.
         $select = \db_select($baseTable, 'n');
         $select->fields('n', ['status', 'created', 'changed']);
         $select->addField('n', $idCol, 'nid');
         $select->addField('n', $nameCol, 'title');
-        $select->addField('n', $bundleColumn, 'type');
-        if ('node' === $entityType) {
-            $select->addTag('node_access');
+
+        // Some entity tables don't have a bundle column.
+        $types = [];
+        if ($bundleColumn) {
+            $select->addField('n', $bundleColumn, 'type');
+            if ($query->has('type') && ($types = $query->get('type'))) {
+                $select->condition('n.'.$bundleColumn, (array)$types, 'IN');
+            } else {
+                $select->condition('n.'.$bundleColumn, \array_keys($allowedTypes), 'IN');
+            }
         }
+
         // Allow other modules to compete with us (contextual filtering, etc...).
         $select->addTag('nodesearch');
-
-        $types = [];
-        if ($query->has('type') && ($types = $query->get('type'))) {
-            $select->condition('n.'.$bundleColumn, (array)$types, 'IN');
-        } else {
-            $select->condition('n.'.$bundleColumn, \array_keys($allowedTypes), 'IN');
-        }
 
         if ($query->has('status')) {
             $select->condition('n.status', (int)(bool)$query->get('status'));
