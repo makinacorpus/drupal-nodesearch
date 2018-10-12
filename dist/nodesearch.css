@@ -6,6 +6,13 @@
   transform: none;
   min-height: 100vh;
 }
+.node-selector-dialog * {
+  box-sizing: border-box;
+}
+.node-selector-dialog input[type=button],
+.node-selector-dialog button {
+  margin: 0;
+}
 .node-selector-dialog .overlay {
   position: fixed;
   top: 0;
@@ -18,14 +25,14 @@
 }
 .node-selector-dialog .dialog {
   position: fixed;
-  width: 801px;
+  width: 800px;
   top: 50px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 2001;
   background: white;
   box-shadow: 0 0 5px black;
-  padding: 1.5rem 2rem;
+  padding: 14px 20px;
   border-radius: 5px;
 }
 @media (max-height: 760px) {
@@ -38,7 +45,7 @@
     min-height: 100vh;
   }
 }
-@media (max-width: 801px) {
+@media (max-width: 800px) {
   .node-selector-dialog .dialog {
     top: 0;
     left: 0;
@@ -178,7 +185,7 @@
   padding-left: 0;
   padding-right: 0;
 }
-@media (max-width: 801px) {
+@media (max-width: 800px) {
   .node-selector .node-selector-placeholder {
     display: none;
     visibility: hidden;
@@ -192,3 +199,6 @@
 .node-selector .footer input[name=submit] {
   float: right;
 }
+
+
+/*# sourceMappingURL=nodesearch.css.map*/

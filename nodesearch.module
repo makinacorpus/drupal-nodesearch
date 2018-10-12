@@ -70,6 +70,7 @@ function nodesearch_library() {
     'version' => '1',
     'js' => [
       $path . '/dist/nodesearch.js' => [],
+      $path . '/dist/behavior.js' => [],
     ],
     'css' => [
       $path . '/dist/nodesearch.css' => [],
