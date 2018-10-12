@@ -14,6 +14,7 @@ nodesearch:
     version: VERSION
     js:
         dist/nodesearch.js: {}
+        dist/behavior.js: {}
     css:
         component:
             dist/nodesearch.css: {}
