@@ -116,9 +116,9 @@ function nodesearch_element_process($element) {
     if (count($nodes) !== count($values)) {
       trigger_error("nodesearch widget contains one or more node that don't exist", E_USER_NOTICE);
     }
-    /** @var \MakinaCorpus\Drupal\NodeSearch\NodeResultFormatter $formatter */
-    $formatter = \Drupal::service('nodesearch_result_formatter');
-    $output = $formatter->createResultAll($nodes, true);
+    /** @var \MakinaCorpus\Drupal\NodeSearch\NodeSearcher $formatter */
+    $formatter = \Drupal::service('nodesearch_node_searcher');
+    $output = $formatter->createResultAll('node', $nodes, true);
     // In all cases, normalize values input (ordering is kept here).
     $values = array_keys($nodes);
   }
@@ -156,7 +156,7 @@ function nodesearch_element_value(&$element, $input = false) {
     $values = array_filter(array_unique(explode(',', $input['values'])));
   } else if ($element['#default_value']) {
     if (is_array($element['#default_value'])) {
-      $values = $element['#default_value']; 
+      $values = $element['#default_value'];
     } else {
       $values = [$element['#default_value']];
     }

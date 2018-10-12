@@ -2,36 +2,16 @@
 
 namespace MakinaCorpus\Drupal\NodeSearch;
 
+use Drupal\Core\Entity\EntityChangedInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityManager;
+use Drupal\Core\Entity\EntityPublishedInterface;
+use MakinaCorpus\Calista\Query\Filter;
 use MakinaCorpus\Calista\Query\InputDefinition;
 use MakinaCorpus\Calista\Query\Query;
-use MakinaCorpus\Calista\Query\Filter;
 
-/**
- * @tainted Drupal 7
- */
 class NodeSearcher
 {
-    const LIMIT_DEFAULT = 12;
-    const LIMIT_MAX = 100;
-
-    /**
-     * Get allowed node type names
-     *
-     * @return string[]
-     *   Keys are node bundles, values are human readable names.
-     *   Site-wide blacklisted node types will be excluded from this result.
-     */
-    static public function getAllowedNodeTypes(): array
-    {
-        $types = node_type_get_names();
-        // Filter out site-wide black listed content types.
-        if ($blacklisted = variable_get('nodesearch_endpoint_node_type_blacklist', [])) {
-            $types = \array_diff_key($types, array_flip($blacklisted));
-        }
-
-        return $types;
-    }
-
     /**
      * Get allowed sort fields names
      *
@@ -51,23 +31,52 @@ class NodeSearcher
     }
 
     private $debug = false;
-    private $limitDefault = self::LIMIT_DEFAULT;
-    private $limitMax = self::LIMIT_MAX;
+    private $entityTypeManager;
+    private $handler;
+    private $limitDefault = 12;
+    private $limitMax = 100;
     private $publishedOnly = true;
     private $wildcardAllowPrefix = true;
 
     /**
      * Default constructor
      */
-    public function __construct(bool $debug = true)
-    {
+    public function __construct(
+        EntityManager $entityTypeManager,
+        EntityHandlerInterface $handler,
+        int $limitDefault = 12,
+        int $limitMax = 100,
+        bool $publishedOnly = true,
+        bool $wildcardPrefix = true,
+        bool $debug = true
+    ) {
         $this->debug = $debug;
+        $this->entityTypeManager = $entityTypeManager;
+        $this->handler = $handler;
+        $this->limitDefault = $limitDefault;
+        $this->limitMax = $limitMax;
+        $this->publishedOnly = $publishedOnly;
+        $this->wildcardPrefix = $wildcardPrefix;
+    }
 
-        // @todo Drupal 7 tainted
-        $this->limitDefault = (int)\variable_get('nodesearch_endpoint_limit_default', self::LIMIT_DEFAULT);
-        $this->limitMax = (int)\variable_get('nodesearch_endpoint_limit_max', self::LIMIT_MAX);
-        $this->publishedOnly = (bool)\variable_get('nodesearch_endpoint_published_only', $this->publishedOnly);
-        $this->wildcardPrefix = (bool)\variable_get('nodesearch_endpoint_prefix_wildcard_enable', $this->wildcardAllowPrefix);
+    /**
+     * Get allowed node type names
+     *
+     * @return string[]
+     *   Keys are node bundles, values are human readable names.
+     *   Site-wide blacklisted node types will be excluded from this result.
+     */
+    private function getAllowedBundles(string $entityType): array
+    {
+        $info = \entity_get_info($entityType);
+        $bundles = \array_map(function ($bundleInfo) { return $bundleInfo['label']; }, $info['bundles'] ?? []);
+
+        $blacklisted = [];
+        if ($blacklisted) {
+            $bundles = \array_diff_key($bundles, \array_flip($blacklisted));
+        }
+
+        return $bundles;
     }
 
     /**
@@ -75,13 +84,14 @@ class NodeSearcher
      */
     public function createInputDefinition() : InputDefinition
     {
-        $allowedNodeTypes = self::getAllowedNodeTypes();
-
+        // @todo fix this
+        //$allowedNodeTypes = $this->getAllowedNodeTypes();
         return new InputDefinition([
-            'base_query'          => ['type' => \array_keys($allowedNodeTypes)],
+            'base_query'          => [],// ['type' => \array_keys($allowedNodeTypes)],
             'filter_list'         => [
                 (new Filter('status'))->setChoicesMap([1 => 'Published', 0 => 'Unpublished']),
-                (new Filter('type'))->setChoicesMap($allowedNodeTypes),
+                (new Filter('entity'))->setChoicesMap($this->handler->getSupportedTypes()),
+                (new Filter('type')), //->setChoicesMap($allowedNodeTypes),
                 (new Filter('user_created'))->setChoicesMap([1 => 'Yes', 0 => 'All']),
                 (new Filter('user_touched'))->setChoicesMap([1 => 'Yes', 0 => 'All']),
             ],
@@ -103,30 +113,103 @@ class NodeSearcher
     }
 
     /**
+     * Create result for all given result row
+     */
+    public function createResultAll(string $entityType, array $results, bool $alreadyLoaded = false): array
+    {
+        if (!$results) {
+            return [];
+        }
+
+        if (!$alreadyLoaded) {
+            if (!$idList = \array_map(function ($row) { return $row->nid; }, $results)) {
+                return [];
+            }
+            if (!$results = $this->entityTypeManager->getStorage($entityType)->loadMultiple($idList)) {
+                return [];
+            }
+        }
+
+        return \array_values(\array_map(function ($entity) { return $this->createResult($entity); }, $results));
+    }
+
+    /**
+     * Build result array from node result row
+     */
+    public function createResult(EntityInterface $result): array
+    {
+        $entityType = $result->getEntityTypeId();
+
+        // @todo Drupal 7 tainted - find bundle label.
+        $bundleLabel = \nodesearch_bundle_label($entityType, $result);
+
+        $ret = [
+            'id'          => $result->id(),
+            'title'       => (string)$result->label(),
+            'status'      => 1,
+            'created'     => null,
+            'updated'     => null,
+            'type'        => $entityType,
+            'human_type'  => $bundleLabel,
+            'image'       => $this->handler->findImage($entityType, $result),
+        ];
+
+        if ($result instanceof EntityPublishedInterface) {
+            $ret['status'] = (int)$result->isPublished();
+        }
+        if ($result instanceof EntityChangedInterface) {
+           $ret['updated'] = (new \DateTimeImmutable('@'.$result->getChangedTime()))->format(\DateTime::ISO8601);
+        }
+        // @todo awaiting for a core generic interface for this
+        if (\method_exists($result, 'getCreatedTime')) {
+            $ret['created'] = (new \DateTimeImmutable('@'.$result->getCreatedTime()))->format(\DateTime::ISO8601);
+        }
+
+        return $ret;
+    }
+
+    /**
      * Query database for content, returns the JSON response as array.
      */
     public function find(Query $query): array
     {
         $userId = $query->get('user_id');
+        $entityType = $query->get('entity', 'node');
 
         // Without any types configured, this serves no purpose
-        if (!$allowedTypes = self::getAllowedNodeTypes()) {
-            return MENU_NOT_FOUND;
+        if (!$allowedTypes = $this->getAllowedBundles($entityType)) {
+            return [];
+        }
+
+        $entityTypeDef = $this->entityTypeManager->getDefinition($entityType);
+        $entityKeys = $entityTypeDef->getKeys();
+        $bundleColumn = $entityKeys['bundle'];
+        $idCol = $entityKeys['id'];
+        $nameCol = $entityKeys['label'];
+        // Some entities won't have a data table.
+        if (!$baseTable = $entityTypeDef->getDataTable()) {
+            $baseTable = $entityTypeDef->getBaseTable();
         }
 
         // Create the query, the rest will flow along.
-        $select = \db_select('node', 'n');
-        $select->fields('n', ['nid', 'title', 'status', 'created', 'changed', 'type']);
-        $select->addTag('node_access');
+        $select = \db_select($baseTable, 'n');
+        $select->fields('n', ['status', 'created', 'changed']);
+        $select->addField('n', $idCol, 'nid');
+        $select->addField('n', $nameCol, 'title');
+
+        // Some entity tables don't have a bundle column.
+        $types = [];
+        if ($bundleColumn) {
+            $select->addField('n', $bundleColumn, 'type');
+            if ($query->has('type') && ($types = $query->get('type'))) {
+                $select->condition('n.'.$bundleColumn, (array)$types, 'IN');
+            } else {
+                $select->condition('n.'.$bundleColumn, \array_keys($allowedTypes), 'IN');
+            }
+        }
+
         // Allow other modules to compete with us (contextual filtering, etc...).
         $select->addTag('nodesearch');
-
-        $types = [];
-        if ($query->has('type') && ($types = $query->get('type'))) {
-            $select->condition('n.type', $types);
-        } else {
-            $select->condition('n.type', \array_keys($allowedTypes));
-        }
 
         if ($query->has('status')) {
             $select->condition('n.status', (int)(bool)$query->get('status'));
@@ -137,25 +220,18 @@ class NodeSearcher
         if ($rawSearchString = $query->getRawSearchString()) {
             // As of now, only title search is allowed
             if ($this->wildcardAllowPrefix) {
-                $select->condition('n.title', '%'.\db_like($rawSearchString).'%', 'like');
+                $select->condition('n.'.$nameCol, '%'.\db_like($rawSearchString).'%', 'LIKE');
             } else {
-                $select->condition('n.title', \db_like($rawSearchString).'%', 'like');
+                $select->condition('n.'.$nameCol, \db_like($rawSearchString).'%', 'LIKE');
             }
-        }
-
-        // Order by view history
-        if ($userId) {
-            $select->leftJoin('history', 'h', "h.nid = n.nid AND h.uid = :history_uid", [':history_uid' => $userId]);
-        } else {
-            $select->leftJoin('history', 'h', "h.nid = n.nid AND 1 = 0");
         }
 
         // Allow a boolean field "my content only".
         if ($userId) {
             if ($query->get('user_touched')) {
                 $revisionExists = \db_select('node_revision', 'r')
-                    ->condition('r.uid', (int)(bool)$query->has('revision_user_id'))
-                    ->where("r.nid = n.nid")
+                    ->condition('r.revision_uid', (int)(bool)$query->has('revision_user_id'))
+                    ->where('r.'.$idCol.' = n.'.$idCol)
                     ->range(0, 1)
                 ;
                 $revisionExists->addExpression('1');
@@ -173,11 +249,13 @@ class NodeSearcher
 
         if ($total) {
             $sortFieldReal = null;
-            $drupalSortOrder = $query->isSortAsc() ? 'asc' : 'desc';
+            $drupalSortOrder = Query::SORT_DESC !== $query->getSortOrder() ? 'asc' : 'desc';
 
+            // @todo be aware that some entity types don't have those fields
+            //    this code should probably moved to the entity handler instead
             switch ($query->getSortField()) {
                 case 'title':
-                    $sortFieldReal = 'n.title';
+                    $sortFieldReal = 'n.'.$nameCol;
                     break;
                 case 'updated':
                     $sortFieldReal = 'n.changed';
@@ -201,7 +279,7 @@ class NodeSearcher
             }
 
             // Always end ordering by a default to make result predictible
-            $select->orderBy('n.nid', $drupalSortOrder);
+            $select->orderBy('n.'.$idCol, $drupalSortOrder);
 
             // If page is higher than max page, then reset the current page.
             $select->range($query->getOffset(), $query->getLimit());
@@ -216,7 +294,7 @@ class NodeSearcher
             'sort_field'  => $query->getSortField(),
             'sort_order'  => $query->getSortOrder(),
             'total'       => $total,
-            'types'       => $types ? (is_array($types) ? $types : [$types]) : \array_keys($allowedTypes),
+            'types'       => $types ? (\is_array($types) ? $types : [$types]) : \array_keys($allowedTypes),
             'types_all'   => $allowedTypes,
         ];
     }

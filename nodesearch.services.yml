@@ -1,7 +1,33 @@
+parameters:
+    nodesearch_dev_mode: "%kernel.debug%"
+    nodesearch_endpoint_limit_default: 12
+    nodesearch_endpoint_limit_max: 100
+    nodesearch_endpoint_node_type_blacklist: []
+    nodesearch_endpoint_prefix_wildcard_enable: true
+    nodesearch_endpoint_published_only: true
+    nodesearch_react_enable: true
+
 services:
-  nodesearch_node_searcher:
-    class: MakinaCorpus\Drupal\NodeSearch\NodeSearcher
-    arguments: ["%kernel.debug%"]
-  nodesearch_result_formatter:
-    class: MakinaCorpus\Drupal\NodeSearch\NodeResultFormatter
-    arguments: ["@entity.manager"]
+
+    nodesearch_entity_handler:
+        public: false
+        class: MakinaCorpus\Drupal\NodeSearch\Handler\AggregateHandler
+        arguments: [[]]
+
+    nodesearch_entity_handler_default:
+        public: false
+        class: MakinaCorpus\Drupal\NodeSearch\Handler\DefaultHandler
+        arguments: []
+        tags: [{name: nodesearch_entity_handler}]
+
+    nodesearch_node_searcher:
+        public: true # For controller and form element
+        class: MakinaCorpus\Drupal\NodeSearch\NodeSearcher
+        arguments:
+            - "@entity.manager"
+            - "@nodesearch_entity_handler"
+            - "%nodesearch_endpoint_limit_default%"
+            - "%nodesearch_endpoint_limit_max%"
+            - "%nodesearch_endpoint_published_only%"
+            - "%nodesearch_endpoint_prefix_wildcard_enable%"
+            - "%nodesearch_dev_mode%"

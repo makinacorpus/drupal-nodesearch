@@ -1,70 +1,15 @@
 <?php
 
-namespace MakinaCorpus\Drupal\NodeSearch;
+namespace MakinaCorpus\Drupal\NodeSearch\Handler;
 
-use Drupal\Core\Entity\EntityManager;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\node\NodeInterface;
 
-/**
- * @tainted Drupal 7
- *
-class NodeResultFormatter
+trait ImageFieldTrait
 {
-    private $entityManager;
-    private $withImage = true;
-
-    /**
-     * Default constructor
-     *
-    public function __construct(EntityManager $entityManager)
-    {
-        $this->entityManager = $entityManager;
-        $this->withImage = (bool)variable_get('nodesearch_endpoint_add_image', $this->withImage);
-    }
-
-    /**
-     * Create result for all given result row
-     *
-    public function createResultAll(array $results, bool $alreadyLoaded = false) : array
-    {
-        if (!$results) {
-            return [];
-        }
-
-        if (!$alreadyLoaded) {
-            if (!$idList = \array_map(function ($row) { return $row->nid; }, $results)) {
-                return [];
-            }
-            if (!$results = $this->entityManager->getStorage('node')->loadMultiple($idList)) {
-                return [];
-            }
-        }
-
-        return \array_values(\array_map(function ($node) { return $this->createResult($node); }, $results));
-    }
-
-    /**
-     * Build result array from node result row
-     *
-    public function createResult($result) : array
-    {
-        $types = \node_type_get_names();
-
-        return [
-            'id'          => $result->nid,
-            'title'       => $result->title,
-            'status'      => $result->status,
-            'created'     => (new \DateTimeImmutable('@'.$result->created))->format(\DateTime::ISO8601),
-            'updated'     => (new \DateTimeImmutable('@'.$result->changed))->format(\DateTime::ISO8601),
-            'type'        => $result->type,
-            'human_type'  => $types[$result->type] ?? $result->type,
-            'image'       => $this->withImage ? $this->findImage($result) : '',
-        ];
-    }
-
     /**
      * Attempt to find a suitable image style automatically
-     *
+     */
     private function findImageStyle() : string
     {
         $styles = \image_styles();
@@ -83,9 +28,11 @@ class NodeResultFormatter
 
     /**
      * Find image field for given node type
-     *
+     */
     private function findImageField(string $type) : array
     {
+        return [];
+
         $candidates = [];
 
         if ($config = \variable_get('nodesearch_preview_image_field')) {
@@ -115,9 +62,10 @@ class NodeResultFormatter
      *
      * @return null|string
      *   Absolute usable image for display
-     *
-    private function findImage($result) : string
+     */
+    private function findImageFor(EntityInterface $result) : string
     {
+        return '';
         $storage = $this->entityManager->getStorage('node');
         $style = \variable_get('nodesearch_preview_image_style', null) ?? $this->findImageStyle();
 
@@ -161,4 +109,3 @@ class NodeResultFormatter
         return '';
     }
 }
- */

@@ -28,6 +28,18 @@ function nodesearch_menu() {
 }
 
 /**
+ * Get entity bundle label
+ */
+function nodesearch_bundle_label(string $entityType, $entity): string {
+  if (is_string($entity)) {
+    $bundle = $entity;
+  } else {
+    list(,, $bundle) = entity_extract_ids($entityType, $entity);
+  }
+  return entity_get_info($entityType)['bundles'][$bundle]['label'] ?? $bundle;
+}
+
+/**
  * Implements hook_library().
  */
 function nodesearch_library() {
