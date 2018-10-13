@@ -133,6 +133,7 @@ function nodesearch_element_process($element) {
     '#type'          => 'hidden',
     '#default_value' => implode(',', $values),
     '#attributes'    => [
+      'data-entity'       => 'node',
       'data-nodesearch'   => "true",
       'data-title'        => $element['#title'] ?? '',
       'data-placeholder'  => $element['#placeholder'] ?? '',
